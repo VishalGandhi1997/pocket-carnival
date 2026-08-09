@@ -56,11 +56,14 @@ Follow [APK-AND-PLAYSTORE.md](APK-AND-PLAYSTORE.md) § 4 and [.env.example](.env
 
 ## 4) Legal pages — host them & set your email — ~20 min
 
-The pages are written and brand-neutral; they just need your email + a public URL.
+The pages are written, brand-neutral, and **already hosted via GitHub Pages**
+(auto-redeployed on every push to `main`):
 
-- [ ] In [store/privacy-policy.html](store/privacy-policy.html) and [store/terms.html](store/terms.html), replace **`support@khelmela.app`** with your real support email.
-- [ ] Host both files at a public URL (any static host — GitHub Pages, Vercel, Netlify, Cloudflare Pages). You'll get e.g. `https://yoursite/privacy-policy.html`.
-- [ ] Paste the **Privacy Policy URL** into Play Console → Store settings, **and** into the Data safety form.
+- ✅ **Live now:** https://vishalgandhi1997.github.io/khel-mela/privacy-policy.html
+  and https://vishalgandhi1997.github.io/khel-mela/terms.html
+  (source of truth: `public/*.html`; the copies in `store/` feed the Play listing docs)
+- [ ] Replace **`support@khelmela.app`** in both pages with your real support email, push.
+- [ ] Paste the **Privacy Policy URL** above into Play Console → Store settings, **and** into the Data safety form.
 
 ---
 
