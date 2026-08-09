@@ -1,80 +1,99 @@
-# Google Play Store Listing — Khel Mela
+# Store Listing — Khel Mela (a BetterSuite app)
 
-Copy-paste these into Play Console ▸ Main store listing. Character limits are
-enforced by Google, so they're pre-checked here.
+Final copy for both stores. Character limits pre-checked. Seller of record:
+your legal name (individual account); brand shown in copy: **BetterSuite**.
 
-## App name (max 30 chars)
-```
-Khel Mela: 30 Games in One
-```
-*(28 chars. Alt: "Khel Mela — Mini Games" if you want the brand cleaner.)*
+- App ID / bundle ID: `app.bettersuite.khelmela`
+- Support URL: https://bettersuite.app/khelmela/support/
+- Marketing URL: https://bettersuite.app/khelmela/
+- Privacy Policy URL: https://bettersuite.app/khelmela/privacy/
+- Terms: https://bettersuite.app/terms/
+- Support email: support@bettersuite.app
 
-## Short description (max 80 chars)
-```
-30 casual mini-games in one app — puzzles, board games & arcade. Play free!
-```
-*(74 chars.)*
+---
 
-## Full description (max 4000 chars)
-```
-Khel Mela packs 30 fun mini-games into one colourful app — the only game
-box you need. Block puzzles, board classics, arcade action, and quick brain
-teasers, all wrapped in one playful "carnival" world. Jump in as a guest in one
-tap. No lengthy sign-up, no clutter — just tap and play.
+## Google Play
 
-🧩 PUZZLE
+**App name (30 chars max)**
+```
+Khel Mela: 35 Games in One
+```
+*(26 chars)*
+
+**Short description (80 max)**
+```
+35 casual mini-games in one app — puzzles, board games & arcade. Play free!
+```
+*(74 chars)*
+
+**Full description (4000 max)**
+```
+Khel Mela packs 35 fun mini-games into one colourful app — the only game box
+you need. Block puzzles, board classics, arcade action and brain teasers, all
+in one playful carnival world. Jump in as a guest in one tap: no sign-up, no
+clutter — just play.
+
+🧩 PUZZLE & BRAIN
 • BlockBazi — fit blocks, clear rows, columns and 3×3 zones
-• Rang Sort — pour and sort the colours
-• Do Guna — swipe to merge and double the numbers
-• Yaad Rakh — flip and match the pairs
+• Rang Sort, Do Guna, Tila Match, Jodi Merge, Khol Do!
+• Sudoku Sadhana, Rangoli Logic, Surang, Word Khoj, Shabd Jod, Tukda Tukda
 
 🎲 PLAY TOGETHER (pass & play or vs smart bots)
 • Chaupar Champs — race your tokens home
-• Sanp Sidhi — classic snakes & ladders
-• Char Ki Chaal — connect four in a row
-• Kata Kat — dots & boxes duel
-• Paddle Panga — same-screen paddle showdown
+• Sanp Sidhi, Char Ki Chaal, Kata Kat, Paddle Panga
+• Carrom Clash, Patta Party, Dimaag Ki Batti quiz battles
 
-🐍 ARCADE
-• Naagin — the classic snake, faster every level
-• …and many more on the way
+🕹️ ARCADE & SKILL
+• Naagin, Local Dash, Udaan, Toda Phoda, Bubble Bazaar, Tikki Drop
+• Nom City, Chhat Pe Chhat, Gubbara Pop, Nishana, Chamak, Hisab Kitab
+• Chai Empire — build your chai tapri
 
 ⭐ WHY YOU'LL KEEP COMING BACK
-• Every game gets HARDER as you level up — and pays out MORE coins
-• Daily bonus + "Watch & Earn" free coins every day
-• Beat your best score, climb the levels, unlock the challenge
-• Buttery animations, satisfying sounds, instant fun in 10 seconds
+• Games get HARDER as you level — and pay MORE coins
+• Daily bonus, streaks, missions, Lucky Spin and weekly ranks
+• Earn coins, unlock skins, revive your best runs
+• Buttery animations and satisfying sounds in every game
 
 💯 MADE FOR EVERYONE
 • Play offline — most games need no internet
-• Light on storage and data — perfect for any phone
-• Guest mode by default; sign in only if you want to sync progress
+• Light on storage and data — runs great on any phone
+• No account needed. Your progress stays on your device
 • 100% virtual coins — no real-money gaming, ever
 
-Free to play, supported by ads. Download Khel Mela and turn every spare minute
-into playtime!
+Free to play, supported by ads, with optional in-app purchases (coin packs and
+Remove Ads). Khel Mela is a BetterSuite app (bettersuite.app). Download and
+turn every spare minute into playtime!
 ```
 
-## Category & tags
-- **Category:** Games ▸ Casual (or Puzzle)
-- **Tags:** casual, puzzle, board games, arcade, brain, family
-- **Contains ads:** YES
-- **In-app purchases:** No (add later if you introduce coin packs / remove-ads)
+**Category:** Games ▸ Casual · **Tags:** casual, puzzle, board, arcade, brain, family
+**Contains ads:** YES · **In-app purchases:** YES (₹79–₹499 range; coin packs + Remove Ads)
 
-## Graphics checklist
-| Asset | Size | Source |
-|---|---|---|
-| App icon | 512×512 PNG | Export from `public/icon.svg` |
-| Feature graphic | 1024×500 PNG | Open `store/feature-graphic.html`, screenshot the `.fg` box at 1× |
-| Phone screenshots (2–8) | ≥320px, portrait 9:16 | Screenshot the running app (home, BlockBazi, a win screen, a 2-player game) |
+---
 
-## Privacy policy
-Host `store/privacy-policy.html` at a public URL (GitHub Pages, Vercel, Netlify,
-or any static host) and paste that URL into Play Console ▸ Store settings ▸
-Privacy Policy, and into the Data safety form. Update the contact email inside
-the file first.
+## Apple App Store
 
-## Data safety form — declare
-- Advertising ID collected (by AdMob) → for Advertising/Marketing.
-- Approximate location (from IP, by AdMob) → for Advertising.
-- Data is not sold. Data is processed by Google (AdMob / Firebase).
+**Name (30 max):** `Khel Mela: 35 Games in One`
+**Subtitle (30 max):** `Puzzles, board & arcade fun` *(27 chars)*
+**Promotional text (170 max):**
+```
+35 games in one app — puzzles, board classics, arcade and brain teasers. New
+skill levels to climb every day. Jump in and play!
+```
+**Keywords (100 chars, comma-separated, no spaces):**
+```
+mini games,puzzle,board,ludo,carrom,sudoku,brain,offline,casual,arcade,family,block,snake,quiz
+```
+*(95 chars)*
+
+**Description:** reuse the Play full description (drop the "Contains ads" line —
+disclosed via App Privacy instead).
+
+**Category:** Games (primary: Casual; secondary: Puzzle)
+**Age rating:** see compliance.md (expected 4+/Everyone unless simulated-gambling
+answers change it — our honest answers keep it low)
+
+---
+
+## Screenshot & graphic requirements
+See [screenshots-shotlist.md](screenshots-shotlist.md). Feature graphic
+(Play, 1024×500): open `feature-graphic.html`, screenshot at 1×.

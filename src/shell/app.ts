@@ -117,6 +117,14 @@ function showProfileSheet() {
       <div class="howto-title">${esc(p.name)}</div>
       <div class="ps-status">👤 Playing as guest · saved on this device</div>
       <div class="ps-row"><span>🪙 Coins</span><b>${sdk.getCoins()}</b></div>
+      <div class="ps-about">
+        <span class="ps-brand">A <b>BetterSuite</b> app</span>
+        <span class="ps-links">
+          <a href="https://bettersuite.app/khelmela/privacy/" target="_blank" rel="noopener">Privacy</a> ·
+          <a href="https://bettersuite.app/terms/" target="_blank" rel="noopener">Terms</a> ·
+          <a href="https://bettersuite.app/khelmela/support/" target="_blank" rel="noopener">Support</a>
+        </span>
+      </div>
     </div>
   `;
   const card = ov.querySelector(".howto-card")!;
@@ -513,7 +521,7 @@ export function showWelcome() {
   wrap.className = "welcome";
   wrap.innerHTML = `
     <div class="w-logo">Khel<em>Mela</em></div>
-    <div class="w-sub">30 games, one app. Jump straight in.</div>
+    <div class="w-sub">35 games, one app. Jump straight in.</div>
     <div class="w-avatars">
       ${AVATARS.map(
         (a, i) => `<button class="w-av${i === 0 ? " sel" : ""}" data-av="${a}">${a}</button>`,
@@ -579,7 +587,7 @@ export function showHome() {
 
   const note = document.createElement("div");
   note.className = "footer-note";
-  note.textContent = "Khel Mela v1.1 · all 35 games playable";
+  note.textContent = "Khel Mela v1.1 · 35 games · A BetterSuite app";
   root.appendChild(note);
   transitionIn();
 }

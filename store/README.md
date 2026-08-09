@@ -1,18 +1,15 @@
-# Store assets — Khel Mela
+# Store assets — Khel Mela (a BetterSuite app)
 
-Everything you need for the Google Play listing. Full submission steps are in
-[../APK-AND-PLAYSTORE.md](../APK-AND-PLAYSTORE.md).
+Everything for the Google Play + App Store submissions. Bundle ID:
+`app.bettersuite.khelmela` · Support: support@bettersuite.app
 
-| File | What it is | How to use |
-|---|---|---|
-| `listing.md` | App name, short + full description, category, data-safety declarations | Copy-paste into Play Console |
-| `privacy-policy.html` | Complete, ads-aware privacy policy (required to publish) | Host at a public URL; paste that URL into Play Console. Edit the contact email first. |
-| `feature-graphic.html` | The 1024×500 banner Play shows atop your listing | Open in a browser, screenshot the graphic at 1× → save as PNG |
-| App icon | — | Export `../public/icon.svg` to a 512×512 PNG |
-| Phone screenshots | — | Screenshot the running app in portrait (home, BlockBazi, a win screen, a 2-player match). 2–8 required. |
+| File | What it is |
+|---|---|
+| [listing.md](listing.md) | Final copy for BOTH stores: names, subtitle, descriptions, keywords, categories, URLs |
+| [compliance.md](compliance.md) | Content-rating questionnaire answers, Play Data Safety form, Apple privacy-label answers — written to match the shipped build's actual behavior |
+| [screenshots-shotlist.md](screenshots-shotlist.md) | Exact shots to capture on a device, sizes for both stores, feature-graphic + icon export notes |
+| [privacy-policy.html](privacy-policy.html) / [terms.html](terms.html) | Legal page sources. Canonical hosting: `bettersuite.app/khelmela/privacy/` and `bettersuite.app/terms/` (mirrored meanwhile on GitHub Pages via `public/`) |
+| [feature-graphic.html](feature-graphic.html) | 1024×500 Play banner — open in a browser, screenshot at 1× |
 
-## Fastest way to host the privacy policy
-Any static host works. E.g. with Vercel: drop `privacy-policy.html` in a folder
-and `vercel deploy`, or commit it to a GitHub repo and enable GitHub Pages. The
-resulting URL goes in Play Console ▸ Store settings ▸ Privacy Policy **and** in
-the Data safety form.
+Submission steps live in [../APK-AND-PLAYSTORE.md](../APK-AND-PLAYSTORE.md);
+owner-only items in [../LAUNCH-CHECKLIST.md](../LAUNCH-CHECKLIST.md).

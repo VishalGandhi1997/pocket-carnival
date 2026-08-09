@@ -15,7 +15,7 @@ payouts, which run through AdMob/Play separately.
 1. Go to <https://console.firebase.google.com> → **Add project** → name it
    "Khel Mela" → accept → **Create**.
 2. In the project, click the **Android** icon to add an Android app.
-   - **Android package name:** `com.khelmela.games` (must match
+   - **Android package name:** `app.bettersuite.khelmela` (must match
      `capacitor.config.ts` exactly).
    - Register → **download `google-services.json`**.
 3. Put `google-services.json` in `android/app/` (after you've run
@@ -62,16 +62,16 @@ npm run android:sync
 2. Add your app's **SHA-1** fingerprint (Firebase → Project settings → your
    Android app → Add fingerprint). Get it with:
    `cd android && ./gradlew signingReport` (use the SHA1 under `Variant: release`).
-3. In [src/shell/app.ts](src/shell/app.ts), find the two "wire Firebase Google
-   auth here" comments (the welcome screen's `.w-signin` handler and the profile
-   sheet's sign-in button) and replace the stub with:
+3. The UI currently ships with NO sign-in button (the non-functional stub was
+   removed in the launch audit). When enabling this, add a "Sign in to sync"
+   button to the profile sheet in [src/shell/app.ts](src/shell/app.ts) that calls:
    ```ts
    import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
    const res = await FirebaseAuthentication.signInWithGoogle();
-   // res.user.displayName / res.user.photoURL available here
-   enter(true);           // welcome screen
-   // or sdk.markSignedIn() in the profile sheet
+   sdk.markSignedIn(); // then migrate local save → Firestore under res.user.uid
    ```
+   Also update the privacy policy + Data Safety form FIRST (see
+   store/compliance.md) — they currently declare "no account".
 
 ---
 

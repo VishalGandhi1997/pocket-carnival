@@ -50,7 +50,7 @@ import { mountGubbara } from "./gubbara";
 import { mountBhulBhulaiya } from "./bhulbhulaiya";
 import { mountNishana } from "./nishana";
 
-// Full 30-game roster (see GAMES-LIST.md). Games without `mount` show as
+// Full 35-game roster (see GAMES-LIST.md). Games without `mount` show as
 // "coming soon" — each new game only needs its module + one line here.
 export const games: GameDef[] = [
   // ── Single-player, wave 1 ──

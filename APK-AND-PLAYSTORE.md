@@ -52,9 +52,10 @@ Android Studio, which isn't installed here, so the `.aab` binary is built there.
 
 ## Stage 1 — Generate the Android project
 
-`appId` is **`com.khelmela.games`** in [capacitor.config.ts](capacitor.config.ts).
-**This is permanent after your first upload — change it now if you want a
-different one** (e.g. `com.yourcompany.khelmela`).
+`appId` is **`app.bettersuite.khelmela`** in [capacitor.config.ts](capacitor.config.ts)
+— final, under the BetterSuite brand. **Permanent after your first upload.**
+Create every store/service entry (Play, App Store, Firebase, AdMob, RevenueCat)
+against this exact ID.
 
 ```bash
 npm run cap:add        # creates android/ (run once)

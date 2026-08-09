@@ -641,6 +641,15 @@ body.has-banner #app { padding-bottom: calc(64px + env(safe-area-inset-bottom));
   font-weight: 800; font-size: 15px;
 }
 .ps-row b { color: var(--gold-1); }
+.ps-about {
+  display: flex; flex-direction: column; gap: 4px; align-items: center;
+  padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.12); width: 100%;
+}
+.ps-brand { font-size: 12px; font-weight: 700; opacity: 0.8; }
+.ps-brand b { color: var(--gold-1); }
+.ps-links { font-size: 12px; font-weight: 700; opacity: 0.85; }
+.ps-links a { color: var(--cyan); text-decoration: none; }
+.ps-links a:active { opacity: 0.7; }
 
 /* ══════════ MOTION & JUICE LAYER ══════════ */
 

@@ -4,6 +4,8 @@
 // the shop flow is testable. See FIREBASE-SETUP.md → "In-app purchases".
 
 import { Capacitor } from "@capacitor/core";
+import { AppConfig } from "../config/app-config";
+import { toast } from "./platform";
 
 export interface Product {
   id: string; // must match the product ID you create in Play Console
@@ -56,14 +58,20 @@ export async function loadStorePrices(): Promise<Record<string, string>> {
 
 /**
  * Attempt a purchase. Returns true on success.
- * - Browser: simulates success so the shop + grant flow can be tested.
- * - Android: calls the Play Billing plugin if present; otherwise returns false.
+ * - Browser/web build: NO fake commerce. Fails honestly unless the dev-only
+ *   AppConfig.DEMO_PURCHASES flag is on (default OFF — see app-config.ts).
+ * - Native: calls the billing plugin (RevenueCat/Play Billing once the owner
+ *   fills REVENUECAT_KEY); returns false gracefully while unconfigured.
  */
 export async function purchase(product: Product): Promise<boolean> {
   if (!isNative) {
-    // Simulated purchase for web/preview testing.
-    await new Promise((r) => setTimeout(r, 400));
-    return true;
+    if (AppConfig.DEMO_PURCHASES) {
+      // Dev-only simulated purchase for testing the grant/celebration flow.
+      await new Promise((r) => setTimeout(r, 400));
+      return true;
+    }
+    toast("Purchases are available in the app version 📱");
+    return false;
   }
   try {
     const plugin = (Capacitor as unknown as { Plugins?: Record<string, any> }).Plugins

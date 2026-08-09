@@ -1,9 +1,11 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  // Reverse-domain ID. This is your permanent Play Store package name —
-  // it can NEVER be changed after your first upload, so pick carefully.
-  appId: "com.khelmela.games",
+  // Reverse-domain ID under the BetterSuite studio brand. This is the
+  // permanent Play package name AND iOS bundle id — it can NEVER change
+  // after the first store upload. Nothing has been uploaded yet, so this
+  // migration (from the old com.khelmela.games) is free.
+  appId: "app.bettersuite.khelmela",
   appName: "Khel Mela",
   // Vite builds to dist/. `npx cap sync` copies this into the native app.
   webDir: "dist",
