@@ -1,0 +1,25 @@
+<!--
+  REFERENCE ONLY — not built automatically.
+  After `npx cap add android`, open
+    android/app/src/main/AndroidManifest.xml
+  and merge the pieces below. Without these, AdMob will not serve ads and the
+  Play Store may reject the build.
+-->
+
+<!-- 1) PERMISSIONS — put these inside <manifest>, above <application> -->
+<uses-permission android:name="android.permission.INTERNET"/>
+<!-- Required by AdMob on Android 13+ to read the advertising ID. -->
+<uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
+
+<!-- 2) ADMOB APP ID — put this inside <application>.
+     Get the value from AdMob ▸ your app ▸ App settings (looks like
+     ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY — note the ~, not /). -->
+<meta-data
+    android:name="com.google.android.gms.ads.APPLICATION_ID"
+    android:value="ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY"/>
+
+<!--
+  3) VERSIONING — in android/app/build.gradle bump these for every release:
+       versionCode 1        // integer, MUST increase every upload
+       versionName "1.0.0"  // the human-visible version
+-->
