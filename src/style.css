@@ -1,4 +1,4 @@
-/* ── Khel Mela design system v3: "cosmic carnival" ─────────────────
+/* ── Pocket Carnival design system v3: "cosmic carnival" ─────────────────
    Deep-space ground + aurora ribbons + neon glass cards. */
 :root {
   --bg-top: #8b31ff;
@@ -101,6 +101,11 @@ body::after {
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.35));
+}
+@media (max-width: 400px) {
+  .header { padding-left: 14px; padding-right: 14px; }
+  .brand { font-size: 23px; line-height: 0.95; }
+  .brand em { display: block; }
 }
 .wallet {
   display: flex; align-items: center; gap: 6px;
@@ -586,10 +591,10 @@ body.has-banner #app { padding-bottom: calc(64px + env(safe-area-inset-bottom));
   padding: 40px 26px; gap: 14px; text-align: center; min-height: 100dvh;
 }
 .w-logo {
-  font-family: var(--font-display); font-weight: 800; font-size: 44px;
+  font-family: var(--font-display); font-weight: 800; font-size: 44px; line-height: 0.95;
   transform: rotate(-2deg); text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35); margin-top: 20px;
 }
-.w-logo em { font-style: normal; background: linear-gradient(180deg, #ffe9a8, var(--gold-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.w-logo em { display: block; font-style: normal; background: linear-gradient(180deg, #ffe9a8, var(--gold-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .w-sub { font-size: 15px; font-weight: 700; opacity: 0.85; margin-bottom: 8px; }
 .w-avatars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 100%; max-width: 330px; margin: 6px 0; }
 .w-av {

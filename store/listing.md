@@ -1,12 +1,12 @@
-# Store Listing — Khel Mela (a BetterSuite app)
+# Store Listing — Pocket Carnival (a BetterSuite app)
 
 Final copy for both stores. Character limits pre-checked. Seller of record:
 your legal name (individual account); brand shown in copy: **BetterSuite**.
 
-- App ID / bundle ID: `app.bettersuite.khelmela`
-- Support URL: https://bettersuite.app/khelmela/support/
-- Marketing URL: https://bettersuite.app/khelmela/
-- Privacy Policy URL: https://bettersuite.app/khelmela/privacy/
+- App ID / bundle ID: `app.bettersuite.pocketcarnival`
+- Support URL: https://bettersuite.app/pocketcarnival/support/
+- Marketing URL: https://bettersuite.app/pocketcarnival/
+- Privacy Policy URL: https://bettersuite.app/pocketcarnival/privacy/
 - Terms: https://bettersuite.app/terms/
 - Support email: support@bettersuite.app
 
@@ -16,9 +16,9 @@ your legal name (individual account); brand shown in copy: **BetterSuite**.
 
 **App name (30 chars max)**
 ```
-Khel Mela: 40 Games in One
+Pocket Carnival: 40 Games
 ```
-*(26 chars)*
+*(25 chars)*
 
 **Short description (80 max)**
 ```
@@ -28,7 +28,7 @@ Khel Mela: 40 Games in One
 
 **Full description (4000 max)**
 ```
-Khel Mela packs 40 fun mini-games into one colourful app — the only game box
+Pocket Carnival packs 40 fun mini-games into one colourful app — the only game box
 you need. Block puzzles, board classics, arcade action and brain teasers, all
 in one playful carnival world. Jump in as a guest in one tap: no sign-up, no
 clutter — just play.
@@ -64,7 +64,7 @@ clutter — just play.
 • 100% virtual coins — no real-money gaming, ever
 
 Free to play, supported by ads, with optional in-app purchases (coin packs and
-Remove Ads). Khel Mela is a BetterSuite app (bettersuite.app). Download and
+Remove Ads). Pocket Carnival is a BetterSuite app (bettersuite.app). Download and
 turn every spare minute into playtime!
 ```
 
@@ -75,7 +75,7 @@ turn every spare minute into playtime!
 
 ## Apple App Store
 
-**Name (30 max):** `Khel Mela: 40 Games in One`
+**Name (30 max):** `Pocket Carnival: 40 Games` *(25 chars)*
 **Subtitle (30 max):** `Puzzles, board & arcade fun` *(27 chars)*
 **Promotional text (170 max):**
 ```

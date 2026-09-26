@@ -1,8 +1,8 @@
-# Khel Mela — Launch Checklist (BetterSuite go-live)
+# Pocket Carnival — Launch Checklist (BetterSuite go-live)
 
 Brand: **BetterSuite** (bettersuite.app) · Seller of record: your legal name
-(individual enrollment, both stores) · App/bundle ID: **`app.bettersuite.khelmela`**
-· Slug: **`khelmela`** · Support: **support@bettersuite.app**
+(individual enrollment, both stores) · App/bundle ID: **`app.bettersuite.pocketcarnival`**
+· Slug: **`pocketcarnival`** · Support: **support@bettersuite.app**
 
 Everything not requiring your accounts, keys, devices, or the bettersuite.app
 domain is **DONE** (marked ✅). What remains is the OWNER ACTIONS list at the end.
@@ -14,7 +14,7 @@ domain is **DONE** (marked ✅). What remains is the OWNER ACTIONS list at the e
 ### Branding & legal
 - ✅ All placeholder emails replaced with **support@bettersuite.app** (app docs + all legal pages).
 - ✅ Privacy/Terms/Support links point to the BetterSuite URLs
-  (`bettersuite.app/khelmela/privacy/`, `/khelmela/support/`, `/terms/`) — wired
+  (`bettersuite.app/pocketcarnival/privacy/`, `/pocketcarnival/support/`, `/terms/`) — wired
   in the in-app profile sheet ("A **BetterSuite** app" + Privacy · Terms · Support links)
   and across the store docs.
 - ✅ "A BetterSuite app" credit on the home footer and profile sheet.
@@ -22,16 +22,23 @@ domain is **DONE** (marked ✅). What remains is the OWNER ACTIONS list at the e
   and the sign-in paragraph corrected to match reality (no account exists).
 - ✅ Interim hosting stays live on GitHub Pages (auto-deploy on push) until the
   bettersuite.app pages are up:
-  https://vishalgandhi1997.github.io/khel-mela/privacy-policy.html · …/terms.html
+  https://vishalgandhi1997.github.io/pocket-carnival/privacy-policy.html · …/terms.html
 
-### Bundle ID migration (was `com.khelmela.games`)
-- ✅ `capacitor.config.ts` → **`app.bettersuite.khelmela`** (Android package AND
+### App name + bundle ID (renamed to Pocket Carnival in v1.2)
+- ✅ `capacitor.config.ts` → **`app.bettersuite.pocketcarnival`** (Android package AND
   future iOS bundle id — Capacitor uses one appId for both).
 - ✅ All runbooks/docs updated to the new ID.
+- ✅ App renamed to the international **Pocket Carnival** everywhere (app shell,
+  logo, manifest, legal pages, store copy, docs). A quick store search found no
+  app with this name; still do a final Play/App Store + trademark search before
+  the first upload.
+- ✅ Existing saves migrate automatically (old `khelmela.v1` storage key is read
+  once, then saved under `pocketcarnival.v1`). Every game's internal id is
+  unchanged, so best scores and levels carry over.
 - ⚠️ **Touches signing/store setup (flagged, all owner-side):** the Play app
   entry, upload keystore, Play App Signing, Firebase `google-services.json`,
   AdMob app link, and RevenueCat app must ALL be created against
-  `app.bettersuite.khelmela`. Nothing was ever uploaded under the old ID, so
+  `app.bettersuite.pocketcarnival`. Nothing was ever uploaded under the old ID, so
   there is no migration debt — just use the new ID everywhere from day one.
 
 ### Billing honesty
@@ -60,7 +67,7 @@ domain is **DONE** (marked ✅). What remains is the OWNER ACTIONS list at the e
 - ✅ Strict TypeScript + production build pass clean (see repo CI-able scripts).
 - ✅ Stale text fixed everywhere (game count → 40 in app title, manifest,
   welcome screen, footer); manifest phantom PNG icons removed earlier.
-- ✅ Placeholder/dead-link sweep: no `khelmela.app` emails, no old bundle id,
+- ✅ Placeholder/dead-link sweep: no `pocketcarnival.app` emails, no old bundle id,
   no employer or work identifiers anywhere in the repo or git history metadata
   (commits authored via GitHub noreply).
 - ✅ Deployed web build verified live after changes (home, About links, shop
@@ -72,22 +79,22 @@ domain is **DONE** (marked ✅). What remains is the OWNER ACTIONS list at the e
 *(only things that require your accounts, keys, devices, or decisions — in order)*
 
 1. **bettersuite.app hosting** — publish the legal pages at the canonical URLs:
-   copy `store/privacy-policy.html` → `bettersuite.app/khelmela/privacy/`,
+   copy `store/privacy-policy.html` → `bettersuite.app/pocketcarnival/privacy/`,
    `store/terms.html` → `bettersuite.app/terms/`, and stand up
-   `bettersuite.app/khelmela/support/` (a simple contact page listing
+   `bettersuite.app/pocketcarnival/support/` (a simple contact page listing
    support@bettersuite.app is enough). Create the `support@bettersuite.app`
    mailbox (or alias).
 2. **Google Play Developer account** ($25, individual) — ID verification, then
-   create the app as `app.bettersuite.khelmela`; expect the ~14-day closed test
+   create the app as `app.bettersuite.pocketcarnival`; expect the ~14-day closed test
    with 12+ testers before production.
 3. **Apple Developer Program** ($99/yr, individual) — register the
-   `app.bettersuite.khelmela` bundle ID; App Store Connect app record. (iOS
+   `app.bettersuite.pocketcarnival` bundle ID; App Store Connect app record. (iOS
    build also needs `npx cap add ios` + Xcode on a Mac with your certificates.)
 4. **AdMob account** — create the app (linked to the new package), 4 ad units,
    paste unit IDs into `.env`, App ID into AndroidManifest; bank + tax details.
 5. **Firebase project** (when you want analytics/cloud) — Android app with the
    NEW package name, download `google-services.json` into `android/app/`.
-6. **RevenueCat project** (for IAP) — create app for `app.bettersuite.khelmela`,
+6. **RevenueCat project** (for IAP) — create app for `app.bettersuite.pocketcarnival`,
    fill `VITE_REVENUECAT_KEY` in `.env`, create the 4 store products
    (`coins_small`, `coins_medium`, `coins_large`, `remove_ads`) in Play/App
    Store Connect, add a license-tester account.
@@ -101,9 +108,8 @@ domain is **DONE** (marked ✅). What remains is the OWNER ACTIONS list at the e
    license tester, Delete-my-data, consent prompt, notch layout).
 9. **Store forms** — paste listing copy, Data Safety + privacy-label answers
    from [store/compliance.md](store/compliance.md), content rating, "contains
-   ads: Yes", privacy URL `https://bettersuite.app/khelmela/privacy/`.
-10. **Decisions:** confirm slug `khelmela` + app display name "Khel Mela";
-    iOS ads choice (ATT prompt for personalized ads vs non-personalized without
+   ads: Yes", privacy URL `https://bettersuite.app/pocketcarnival/privacy/`.
+10. **Decisions:** iOS ads choice (ATT prompt for personalized ads vs non-personalized without
     ATT — affects the Apple privacy label per compliance.md).
 
 *Reference docs: [APK-AND-PLAYSTORE.md](APK-AND-PLAYSTORE.md) ·

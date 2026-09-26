@@ -1,4 +1,4 @@
-# Screenshot Shot-List — Khel Mela
+# Screenshot Shot-List — Pocket Carnival
 
 Run the app on a phone (or the deployed web build at a 1080×2340-ish viewport),
 set up each state below, screenshot in portrait. Both stores accept these

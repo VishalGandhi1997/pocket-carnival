@@ -1,4 +1,4 @@
-# Compliance Answers — Khel Mela (`app.bettersuite.khelmela`)
+# Compliance Answers — Pocket Carnival (`app.bettersuite.pocketcarnival`)
 
 Answers below are written to MATCH the actual shipped behavior of this build:
 - No account/sign-in. All game progress is stored **locally on-device only**.
@@ -41,7 +41,7 @@ Overall:
 - **Is all data encrypted in transit?** Yes (HTTPS).
 - **Do you provide a way to request deletion?** Yes — in-app "Delete my data"
   (profile screen) + email support@bettersuite.app; deletion URL:
-  https://bettersuite.app/khelmela/privacy/ (deletion section).
+  https://bettersuite.app/pocketcarnival/privacy/ (deletion section).
 - **Account creation:** none.
 
 Declare exactly these data types (all attributed to advertising via AdMob):

@@ -1,4 +1,4 @@
-# Khel Mela — Launch Runbook (Android + AdMob)
+# Pocket Carnival — Launch Runbook (Android + AdMob)
 
 Turn the web app into a signed Android app, put it on Google Play, and earn
 ad revenue. This is the full ads-first launch guide.
@@ -52,7 +52,7 @@ Android Studio, which isn't installed here, so the `.aab` binary is built there.
 
 ## Stage 1 — Generate the Android project
 
-`appId` is **`app.bettersuite.khelmela`** in [capacitor.config.ts](capacitor.config.ts)
+`appId` is **`app.bettersuite.pocketcarnival`** in [capacitor.config.ts](capacitor.config.ts)
 — final, under the BetterSuite brand. **Permanent after your first upload.**
 Create every store/service entry (Play, App Store, Firebase, AdMob, RevenueCat)
 against this exact ID.
@@ -87,8 +87,8 @@ Google Play requires an **AAB** (App Bundle), not a raw APK.
 
 **a) Create your upload keystore ONCE (then guard it forever):**
 ```bash
-keytool -genkey -v -keystore khelmela-upload.keystore \
-  -alias khelmela -keyalg RSA -keysize 2048 -validity 10000
+keytool -genkey -v -keystore pocketcarnival-upload.keystore \
+  -alias pocketcarnival -keyalg RSA -keysize 2048 -validity 10000
 ```
 - Back up the `.keystore` + passwords in a password manager.
 - **Lose this key and you can never update the app again.** Enroll in **Play App
@@ -106,7 +106,7 @@ Bundle`, pick the keystore, choose **release**, build. Output:
 1. **Register** at https://play.google.com/console — **$25 one-time**. New
    accounts need identity verification and (for individuals) a ~14-day closed
    test with 12+ testers before production. Start this early.
-2. **Create app** → "Khel Mela", **Game**, Free.
+2. **Create app** → "Pocket Carnival", **Game**, Free.
 3. **Required forms** (all must be green to publish):
    - **Privacy Policy URL** — required because you run ads and collect the ad ID.
      Host a page (a generator works); it must mention AdMob/Google ads.

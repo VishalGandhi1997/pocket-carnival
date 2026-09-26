@@ -183,7 +183,7 @@ Scoring key: composite of attention (verified demand), dev ease, originality hea
 
 ## Part 5 — Unified design language ("one app, one family")
 
-- **Brand feel:** "Modern mela" — playful Indian carnival energy with international polish. Warm, saturated, rounded, tactile. Never casino-styled.
+- **Brand feel:** "Cosmic carnival" — playful carnival energy with international polish. Warm, saturated, rounded, tactile. Never casino-styled.
 - **Palette:** Deep indigo base (#2D2A5E) + saffron/marigold primary (#FF9F1C) + festive pink (#EF476F) + teal (#06D6A0) + cream surfaces (#FFF8EC). Dark-mode-first shell; each game picks 2 accents from this fixed palette so screenshots always look like one family.
 - **Typography:** Baloo 2 (display — rounded, Devanagari support) + Nunito Sans (UI). Both Google Fonts, free, multilingual — critical for Hindi/regional localization.
 - **UI style:** Soft-rounded cards (24px radius), thick 3px outlines, candy-drop buttons with bottom shadow, confetti micro-bursts on wins. All buttons squash-and-stretch on tap (one shared animation spec).

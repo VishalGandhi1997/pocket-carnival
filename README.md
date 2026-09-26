@@ -1,4 +1,4 @@
-# Khel Mela — Master Casual Gaming App
+# Pocket Carnival — Master Casual Gaming App
 
 One app, 40 original mini-games. See [GAME-DISCOVERY-EXECUTION-PLAN.md](GAME-DISCOVERY-EXECUTION-PLAN.md) for the research-backed strategy and [GAMES-LIST.md](GAMES-LIST.md) for the full roster.
 

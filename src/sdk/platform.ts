@@ -1,4 +1,4 @@
-// Khel Mela platform SDK — the single bridge every mini-game talks to.
+// Pocket Carnival platform SDK — the single bridge every mini-game talks to.
 // Backed by localStorage today; the same interface later routes to
 // Firebase (wallet, leaderboards) and native ads/IAP via Capacitor.
 
@@ -15,7 +15,9 @@ import { track } from "./analytics";
 import { getSkin, DEFAULT_SKIN, type SkinCategory } from "./cosmetics";
 import { ECONOMY } from "./economy";
 
-const LS_KEY = "khelmela.v1";
+const LS_KEY = "pocketcarnival.v1";
+// Pre-rename save key; read once so existing progress carries over.
+const LEGACY_LS_KEY = "khelmela.v1";
 
 // Staged ad rollout (verified retention playbook): no interstitials for a
 // new player's first few rounds, then one every Nth round-end. Tune freely.
@@ -90,7 +92,7 @@ interface SaveState {
 function load(): SaveState {
   const defaults: SaveState = { coins: ECONOMY.startingCoins, best: {}, plays: {} };
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(LS_KEY) ?? localStorage.getItem(LEGACY_LS_KEY);
     if (raw) {
       // Merge over defaults so a partial/old-version/corrupt save can never
       // leave required fields (coins/best/plays) undefined.
@@ -224,6 +226,7 @@ export const sdk = {
   deleteAllData() {
     try {
       localStorage.removeItem(LS_KEY);
+      localStorage.removeItem(LEGACY_LS_KEY);
     } catch {
       /* ignore */
     }

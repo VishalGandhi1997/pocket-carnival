@@ -120,9 +120,9 @@ function showProfileSheet() {
       <div class="ps-about">
         <span class="ps-brand">A <b>BetterSuite</b> app</span>
         <span class="ps-links">
-          <a href="https://bettersuite.app/khelmela/privacy/" target="_blank" rel="noopener">Privacy</a> ·
+          <a href="https://bettersuite.app/pocketcarnival/privacy/" target="_blank" rel="noopener">Privacy</a> ·
           <a href="https://bettersuite.app/terms/" target="_blank" rel="noopener">Terms</a> ·
-          <a href="https://bettersuite.app/khelmela/support/" target="_blank" rel="noopener">Support</a>
+          <a href="https://bettersuite.app/pocketcarnival/support/" target="_blank" rel="noopener">Support</a>
         </span>
       </div>
     </div>
@@ -520,7 +520,7 @@ export function showWelcome() {
   const wrap = document.createElement("div");
   wrap.className = "welcome";
   wrap.innerHTML = `
-    <div class="w-logo">Khel<em>Mela</em></div>
+    <div class="w-logo">Pocket<em>Carnival</em></div>
     <div class="w-sub">40 games, one app. Jump straight in.</div>
     <div class="w-avatars">
       ${AVATARS.map(
@@ -564,7 +564,7 @@ export function showHome() {
   header.innerHTML = `
     <div class="brand-row">
       <button class="avatar-chip" title="Profile" aria-label="Profile and settings">${p?.avatar ?? "🙂"}</button>
-      <div class="brand">Khel<em>Mela</em></div>
+      <div class="brand">Pocket<em>Carnival</em></div>
     </div>
     <div class="header-right">
       <div class="wallet"><span class="coin-ico">🪙</span><span id="coin-count"></span></div>
@@ -587,7 +587,7 @@ export function showHome() {
 
   const note = document.createElement("div");
   note.className = "footer-note";
-  note.textContent = "Khel Mela v1.2 · 40 games · A BetterSuite app";
+  note.textContent = "Pocket Carnival v1.2 · 40 games · A BetterSuite app";
   root.appendChild(note);
   transitionIn();
 }

@@ -13,9 +13,9 @@ payouts, which run through AdMob/Play separately.
 ## 0) Create the Firebase project (once, ~5 min)
 
 1. Go to <https://console.firebase.google.com> → **Add project** → name it
-   "Khel Mela" → accept → **Create**.
+   "Pocket Carnival" → accept → **Create**.
 2. In the project, click the **Android** icon to add an Android app.
-   - **Android package name:** `app.bettersuite.khelmela` (must match
+   - **Android package name:** `app.bettersuite.pocketcarnival` (must match
      `capacitor.config.ts` exactly).
    - Register → **download `google-services.json`**.
 3. Put `google-services.json` in `android/app/` (after you've run

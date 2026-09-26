@@ -1,4 +1,4 @@
-// Khel Mela sound identity — 100% synthesized with WebAudio, zero asset
+// Pocket Carnival sound identity — 100% synthesized with WebAudio, zero asset
 // files. One shared AudioContext, lazily unlocked on the first user gesture
 // (browser autoplay policy). Every sound is short, bright, and "toy-like"
 // to match the carnival brand.
