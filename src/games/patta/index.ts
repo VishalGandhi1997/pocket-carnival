@@ -1,8 +1,10 @@
-// Patta Party — free-play card flip battle. Both sides flip their top card
+// Card Duel — free-play card flip battle. Both sides flip their top card
 // at the same moment; the higher rank takes the trick. Matching ranks spark
-// a DHAMAKA: the next trick counts double (and stacks on repeats). 26 flips,
-// most tricks wins the match. Modes are cosmetic (flips are simultaneous):
-// vs Bot, or Pass & Play sharing one phone. Friendly battle — no stakes.
+// a DOUBLE UP: the next trick counts double (and stacks on repeats). 26 flips,
+// most tricks wins the match. Flips are simultaneous: vs Bot, or Pass & Play
+// sharing one phone. The game is pure luck, so the vs-Bot level ladder is
+// about MARGIN: to clear Level L you must win by at least min(8, L-1) tricks
+// (Levels 1–2: any win). Pass & Play stays a friendly, unleveled match.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, makeTurnBanner, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
@@ -18,6 +20,12 @@ const rankLabel = (r: number) => FACE[r] ?? String(r);
 const suitColor = (s: Card["suit"]) => (s === "♥" || s === "♦" ? palette.pink : palette.ink);
 const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+/** Winning margin (tricks) needed to clear a level in vs-Bot mode. */
+const marginNeeded = (level: number) => Math.max(1, Math.min(8, level - 1));
+const goalText = (level: number) => {
+  const m = marginNeeded(level);
+  return m <= 1 ? "Win to level up" : `Win by ${m}+ to level up`;
+};
 
 /** Shuffle a fresh 52-card deck and split it 26/26. */
 function dealDecks(): [Card[], Card[]] {
@@ -33,7 +41,8 @@ function dealDecks(): [Card[], Card[]] {
 export function mountPatta(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | "pnp" }): () => void {
   const mode = opts?.mode ?? "bot";
   const oppName = mode === "bot" ? "🤖 Bot" : "Player 2";
-  const hud = makeHud(host, ["You", "Them"]);
+  const hud = makeHud(host, mode === "bot" ? ["Level", "You", "Them"] : ["You", "Them"]);
+  let level = mode === "bot" ? sdk.getLevel("patta") : 1;
   const banner = makeTurnBanner(host);
   const gc = createGameCanvas(host, 1.2);
   const { ctx } = gc;
@@ -50,7 +59,7 @@ export function mountPatta(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | 
 
   let deckYou: Card[] = [], deckThem: Card[] = [];
   let tricksYou = 0, tricksThem = 0;
-  let mult = 1; // DHAMAKA multiplier for the next trick
+  let mult = 1; // DOUBLE UP multiplier for the next trick
   let flips = 0;
   let over = false, busy = false;
   let current: { you: Card; them: Card; t: number } | null = null;
@@ -64,7 +73,11 @@ export function mountPatta(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | 
     over = busy = false;
     current = prev = null;
     hud.set("You", 0); hud.set("Them", 0);
-    banner.set(`You vs ${oppName} — Tap Flip!`, "neutral");
+    if (mode === "bot") {
+      level = sdk.getLevel("patta");
+      hud.set("Level", level);
+      banner.set(`You vs 🤖 Bot (Lv ${level}) — ${goalText(level)}!`, "neutral");
+    } else banner.set(`You vs ${oppName} — Tap Flip!`, "neutral");
   }
 
   function flip() {
@@ -82,7 +95,7 @@ export function mountPatta(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | 
     busy = false;
     if (you.rank === them.rank) {
       mult *= 2;
-      banner.set(`🔥 DHAMAKA! Next trick worth ×${mult}`, "neutral");
+      banner.set(`🔥 DOUBLE UP! Next trick worth ×${mult}`, "neutral");
       sdk.haptic(30);
     } else {
       const youTook = you.rank > them.rank;
@@ -106,13 +119,33 @@ export function mountPatta(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | 
   function finish() {
     const tie = tricksYou === tricksThem;
     const youWon = tricksYou > tricksThem;
-    const coins = youWon ? sdk.scaleReward(20, 1) : 5;
+    const coins = youWon ? sdk.scaleReward(20, level) : sdk.scaleReward(5, level);
     if (youWon) sdk.submitScore("patta", sdk.getBest("patta") + 1);
-    sdk.addCoins(coins, "Patta Party");
+    sdk.addCoins(coins, "Card Duel");
+    // Bot mode only: a big enough winning margin climbs the persistent ladder.
+    const margin = tricksYou - tricksThem;
+    const need = marginNeeded(level);
+    const leveledUp = mode === "bot" && youWon && margin >= need;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("patta", level);
+      hud.set("Level", level);
+    }
     banner.set(youWon ? "🏆 You won the match!" : tie ? "All square!" : `${oppName} takes the match`, youWon ? "you" : "opp");
+    let subtitle = `${tricksYou} – ${tricksThem}`;
+    if (leveledUp) {
+      const next = marginNeeded(level);
+      subtitle = `Card Champion! ${tricksYou} – ${tricksThem} · Level ${level} — ${
+        next <= 1 ? "any win clears it" : `now win by ${next}+`
+      }`;
+    } else if (mode === "bot") {
+      subtitle = youWon
+        ? `Won by ${margin} · ${need - margin} more trick${need - margin === 1 ? "" : "s"} of margin for Level ${level + 1}`
+        : `${tricksYou} – ${tricksThem} · ${goalText(level).replace("level up", `reach Level ${level + 1}`)}`;
+    }
     showOverlay(gc.canvas, {
-      title: youWon ? "Patta Badshah! 🂡" : tie ? "All Square" : "Cards Down!",
-      subtitle: `${tricksYou} – ${tricksThem}`,
+      title: leveledUp ? "⬆️ Level Up!" : youWon ? "Card Champion! 🂡" : tie ? "All Square" : "Cards Down!",
+      subtitle,
       coins,
       mood: youWon ? "win" : "lose",
       primaryLabel: "Deal Again",
@@ -183,6 +216,12 @@ export function mountPatta(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | 
     ctx.textAlign = "left"; ctx.textBaseline = "top";
     ctx.font = `700 ${W * 0.038}px "Nunito Sans", sans-serif`;
     ctx.fillText(`Flip ${flips}/26`, W * 0.05, H * 0.03);
+    if (mode === "bot") {
+      // standing reminder of this level's goal (margin needed)
+      ctx.fillStyle = palette.marigold;
+      ctx.font = `800 ${W * 0.034}px "Nunito Sans", sans-serif`;
+      ctx.fillText(`Lv ${level} · ${goalText(level)}`, W * 0.05, H * 0.03 + W * 0.05);
+    }
 
     if (prev) {
       drawFace(youSlotX, slotY, cw, prev.you, prev.alpha * 0.55);
@@ -209,7 +248,7 @@ export function mountPatta(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | 
     ctx.fillText(oppName, W * 0.72, slotY - 10);
 
     if (mult > 1) {
-      // DHAMAKA badge — the next trick is worth ×mult
+      // DOUBLE UP badge — the next trick is worth ×mult
       ctx.beginPath();
       ctx.arc(W / 2, H / 2, W * 0.055, 0, 7);
       ctx.fillStyle = palette.pink;

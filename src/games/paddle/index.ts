@@ -1,19 +1,33 @@
-// Paddle Panga — same-screen pong duel. Vs Bot: drag anywhere to steer
+// Paddle Duel — same-screen pong duel. Vs Bot: drag anywhere to steer
 // your paddle. Pass & Play: two people hold the phone from opposite
 // ends — bottom half controls your paddle, top half controls theirs,
 // using true simultaneous multi-touch (not the single-pointer helper).
+// Bot mode has a persistent level ladder: a faster, more accurate bot and a
+// quicker serve each level. Win a match to level up.
 import { createGameCanvas, localPoint, palette, roundRect } from "../../engine/canvas";
-import { makeTurnBanner, showOverlay } from "../../engine/ui";
+import { makeHud, makeTurnBanner, showOverlay, type Hud } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
 const WIN_SCORE = 5;
 const PADDLE_W_RATIO = 0.26;
 const BALL_R = 8;
 
+// ── Level curve (bot mode) ──
+const botSpeedMul = (level: number) => Math.min(1.5, 0.85 + (level - 1) * 0.08);
+/** Max aim error as a fraction of paddle width. Anything past ~0.56 (half the
+ *  paddle + ball radius) can whiff, so the floor keeps the bot beatable. */
+const botAimError = (level: number) => Math.max(0.62, 0.8 - (level - 1) * 0.035);
+const ballSpeedMul = (level: number) => 1 + Math.min(0.4, (level - 1) * 0.05);
+
 export function mountPaddlePanga(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | "pnp" }): () => void {
   const mode = opts?.mode ?? "bot";
+  // Level ladder only applies vs the bot; pass & play stays a friendly match.
+  const hud: Hud | null = mode === "bot" ? makeHud(host, ["Level", "Wins"]) : null;
+  let level = mode === "bot" ? sdk.getLevel("paddle") : 1;
   const banner = makeTurnBanner(host);
-  banner.set(mode === "bot" ? "First to 5 — drag to move" : "Both hold the phone — drag your end", "neutral");
+  const introText = () =>
+    mode === "bot" ? `🤖 Bot (Lv ${level}) · First to 5 — drag to move` : "Both hold the phone — drag your end";
+  banner.set(introText(), "neutral");
   const gc = createGameCanvas(host, 1.5);
   const { ctx, canvas, w, h } = gc;
 
@@ -28,10 +42,17 @@ export function mountPaddlePanga(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
   let scoreOpp = 0;
   let over = false;
   let serveDelay = 0.6;
+  let botAimOffset = 0; // where on its paddle the bot is (mis)aiming this rally
+
+  function rerollBotAim() {
+    const amp = botAimError(level) * paddleW;
+    botAimOffset = (Math.random() * 2 - 1) * amp;
+  }
 
   function serve(dir: 1 | -1) {
+    rerollBotAim();
     const angle = (Math.random() * 0.6 - 0.3) * Math.PI;
-    const speed = h * 0.55;
+    const speed = h * 0.55 * ballSpeedMul(level);
     ball = {
       x: w / 2,
       y: h / 2,
@@ -41,6 +62,11 @@ export function mountPaddlePanga(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
   }
 
   function reset() {
+    if (mode === "bot") {
+      level = sdk.getLevel("paddle");
+      hud?.set("Level", level);
+      hud?.set("Wins", sdk.getBest("paddle"));
+    }
     scoreYou = 0;
     scoreOpp = 0;
     over = false;
@@ -48,7 +74,7 @@ export function mountPaddlePanga(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
     youX = w / 2;
     serveDelay = 0.6;
     serve(Math.random() < 0.5 ? 1 : -1);
-    banner.set(mode === "bot" ? "First to 5 — drag to move" : "Both hold the phone — drag your end", "neutral");
+    banner.set(introText(), "neutral");
   }
 
   // ── Multi-touch tracking (bypasses the engine's single-pointer input) ──
@@ -83,13 +109,23 @@ export function mountPaddlePanga(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
   function endGame() {
     over = true;
     const youWon = scoreYou > scoreOpp;
-    const coins = youWon ? 22 : 6;
+    const leveledUp = mode === "bot" && youWon;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("paddle", level);
+    }
+    const coins = sdk.scaleReward(youWon ? 22 : 6, level);
     if (youWon) sdk.submitScore("paddle", sdk.getBest("paddle") + 1);
-    sdk.addCoins(coins, "Paddle Panga");
+    sdk.addCoins(coins, "Paddle Duel");
+    hud?.set("Level", level);
+    hud?.set("Wins", sdk.getBest("paddle"));
     banner.set(youWon ? "🏆 You Won!" : "You Lost", youWon ? "you" : "opp");
+    let subtitle = `${scoreYou} – ${scoreOpp}`;
+    if (leveledUp) subtitle = `${scoreYou} – ${scoreOpp} · Level ${level} — faster, sharper bot & quicker ball`;
+    else if (mode === "bot") subtitle = `${scoreYou} – ${scoreOpp} · win a match to reach Level ${level + 1}`;
     showOverlay(gc.canvas, {
-      title: youWon ? "You Won! 🏆" : "So Close!",
-      subtitle: `${scoreYou} – ${scoreOpp}`,
+      title: leveledUp ? "⬆️ Level Up!" : youWon ? "You Won! 🏆" : "So Close!",
+      subtitle,
       coins,
       mood: youWon ? "win" : "lose",
       primaryLabel: "Play Again",
@@ -104,8 +140,8 @@ export function mountPaddlePanga(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
       if (yourTouch !== null) youX = clamp(yourTouch, paddleW / 2, w - paddleW / 2);
 
       if (mode === "bot") {
-        const target = clamp(ball.x, paddleW / 2, w - paddleW / 2);
-        const maxStep = h * 0.9 * dt;
+        const target = clamp(ball.x + botAimOffset, paddleW / 2, w - paddleW / 2);
+        const maxStep = h * 0.9 * botSpeedMul(level) * dt;
         botX += clamp(target - botX, -maxStep, maxStep);
       } else {
         const oppTouch = latestInZone("top");
@@ -126,6 +162,7 @@ export function mountPaddlePanga(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
             Math.abs(ball.x - youX) < paddleW / 2 + BALL_R) {
           ball.vy = -Math.abs(ball.vy) * 1.03;
           ball.vx += ((ball.x - youX) / (paddleW / 2)) * 90;
+          rerollBotAim(); // bot picks a fresh (imperfect) read on each return
           sdk.haptic();
         }
         // top paddle collision

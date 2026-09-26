@@ -1,6 +1,6 @@
-// Jodi Merge — merge-2 board puzzle. Drag matching emoji onto each other to
-// grow the chain (🌱→🌿→🌼→🌸→💐), then drag finished items onto order
-// cards at the top to deliver. 8 deliveries ends the round.
+// Merge Garden — merge-2 board puzzle. Drag matching plants onto each other
+// to grow the chain (🌱→🌿→🌼→🌸→💐), then drag finished items onto order
+// cards at the top to deliver. Delivering every order clears the level.
 import { createGameCanvas, palette, roundRect, type Pointer } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import { floatText } from "../../engine/fx";
@@ -10,16 +10,31 @@ const COLS = 5;
 const ROWS = 6;
 const ITEMS = ["🌱", "🌿", "🌼", "🌸", "💐"]; // tier 0-4
 const MAX_TIER = ITEMS.length - 1;
-const ORDERS_TO_WIN = 8;
 
-/** Random order tier 2-4, weighted toward 2-3 (bouquets stay rare). */
-function newOrderTier(): number {
-  const r = Math.random();
-  return r < 0.42 ? 2 : r < 0.82 ? 3 : 4;
+// Progressive difficulty (persistent level). Finishing all orders = level up.
+//   orders to deliver: 6 + level×2 (cap 20) → L1 = 8
+//   starting items:    max(4, 9 − level)    → L1 = 8
+//   order tiers:       L1–2 only 🌼/🌸; bouquets 💐 appear from L3 and
+//                      become common from L5 (share capped at 40%).
+const ordersToWin = (level: number) => Math.min(20, 6 + level * 2);
+const startItems = (level: number) => Math.max(4, 9 - level);
+function bouquetChance(level: number): number {
+  if (level < 3) return 0;
+  if (level < 5) return 0.12;
+  return Math.min(0.4, 0.25 + (level - 5) * 0.03);
+}
+
+/** Random order tier 2-4; bouquet share rises with level, rest skews 🌸 higher. */
+function newOrderTier(level: number): number {
+  if (Math.random() < bouquetChance(level)) return 4;
+  const p3 = Math.min(0.7, 0.45 + (level - 1) * 0.05); // share of 🌸 vs 🌼
+  return Math.random() < p3 ? 3 : 2;
 }
 
 export function mountJodiMerge(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Orders", "Score"]);
+  const hud = makeHud(host, ["Level", "Orders", "Score"]);
+  let level = sdk.getLevel("jodimerge");
+  let goal = ordersToWin(level);
   const gc = createGameCanvas(host, 1.35);
   const { ctx, w, h } = gc;
 
@@ -43,21 +58,24 @@ export function mountJodiMerge(host: HTMLElement, sdk: Sdk): () => void {
   let drag: { from: number; tier: number; x: number; y: number } | null = null;
 
   function reset() {
+    level = sdk.getLevel("jodimerge");
+    goal = ordersToWin(level);
     grid = Array<number | null>(COLS * ROWS).fill(null);
-    // ~8 starter seedlings/sprouts on random distinct cells
+    // starter seedlings/sprouts on random distinct cells (fewer at higher levels)
     const idx = grid.map((_, i) => i);
     for (let i = idx.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [idx[i], idx[j]] = [idx[j], idx[i]];
     }
-    for (const i of idx.slice(0, 8)) grid[i] = Math.random() < 0.6 ? 0 : 1;
-    orders = [newOrderTier(), newOrderTier(), newOrderTier()];
+    for (const i of idx.slice(0, startItems(level))) grid[i] = Math.random() < 0.6 ? 0 : 1;
+    orders = [newOrderTier(level), newOrderTier(level), newOrderTier(level)];
     flashes = [0, 0, 0];
     delivered = 0;
     score = 0;
     over = false;
     drag = null;
-    hud.set("Orders", `${delivered}/${ORDERS_TO_WIN}`);
+    hud.set("Level", level);
+    hud.set("Orders", `${delivered}/${goal}`);
     hud.set("Score", 0);
   }
 
@@ -84,14 +102,14 @@ export function mountJodiMerge(host: HTMLElement, sdk: Sdk): () => void {
     grid[d.from] = null; // item consumed
     delivered++;
     score += 50;
-    orders[orderIdx] = newOrderTier();
+    orders[orderIdx] = newOrderTier(level);
     flashes[orderIdx] = 0.45;
     sdk.sfx("coin");
     sdk.haptic(30);
     floatText(gc.canvas.parentElement!, pad + orderIdx * (cardW + cardGap) + cardW / 2, ordersY + cardH / 2, "+50");
-    hud.set("Orders", `${delivered}/${ORDERS_TO_WIN}`);
+    hud.set("Orders", `${delivered}/${goal}`);
     hud.set("Score", score);
-    if (delivered >= ORDERS_TO_WIN) finish();
+    if (delivered >= goal) finish();
   }
 
   function merge(target: number, d: NonNullable<typeof drag>) {
@@ -107,13 +125,19 @@ export function mountJodiMerge(host: HTMLElement, sdk: Sdk): () => void {
   function finish() {
     over = true;
     const isBest = sdk.submitScore("jodimerge", score);
-    const coins = sdk.scaleReward(Math.max(2, Math.floor(score / 20)), 1);
-    sdk.addCoins(coins, "Jodi Merge");
+    const coins = sdk.scaleReward(Math.max(2, Math.floor(score / 20)), level);
+    sdk.addCoins(coins, "Merge Garden");
+    // Every order delivered → the level is cleared.
+    level += 1;
+    sdk.setLevel("jodimerge", level);
+    hud.set("Level", level);
+    const harder = level >= 5 ? "more bouquets" : level >= 3 ? "bouquet orders" : "bigger blooms";
     showOverlay(gc.canvas, {
-      title: "Orders Done! 🎁",
-      subtitle: `Score ${score}`,
+      title: "⬆️ Level Up!",
+      subtitle: `Score ${score} · Level ${level} — ${ordersToWin(level)} orders, ${startItems(level)} starter plants, ${harder}`,
       coins,
       isBest,
+      mood: "win",
       primaryLabel: "Play Again",
       onPrimary: reset,
     });

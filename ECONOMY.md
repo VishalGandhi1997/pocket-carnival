@@ -41,16 +41,16 @@ are *ad views* — earning here IS our revenue, so we keep them attractive.
 | Lucky Spin (extra) | 120 | a paid gamble on top of the free one |
 | **Skin — entry** (Blaze/Ocean/Sunset) | 250–350 | **~1 day** of saving |
 | **Skin — mid** (Galaxy/Midnight) | 750–800 | a few days |
-| **Skin — premium** (Golden/Rose Gold) | 1500–1800 | ~a week, or a ₹79–₹249 pack |
-| **Skin — chase** (Rainbow) | 2500 | maps to the ₹249 "Bag of Coins" (2000) + a little grind |
+| **Skin — premium** (Golden/Rose Gold) | 1500–1800 | ~a week, or a $0.99–$2.99 pack |
+| **Skin — chase** (Rainbow) | 2500 | maps to the $2.99 "Bag of Coins" (2000) + a little grind |
 
 ## Coin packs (IAP) — the conversion target
 
 | Pack | Coins | Price* | Buys you… |
 |---|---|---|---|
-| Pocket | 500 | ₹79 | 2 entry skins, or a stack of revives |
-| Bag (BEST) | 2,000 | ₹249 | a premium skin outright |
-| Chest | 5,000 | ₹499 | the whole cosmetic set |
+| Pocket | 500 | $0.99 | 2 entry skins, or a stack of revives |
+| Bag (BEST) | 2,000 | $2.99 | a premium skin outright |
+| Chest | 5,000 | $5.99 | the whole cosmetic set |
 
 \* Fallback labels only — real prices are localized by the store per the user's
 account country (see [FIREBASE-SETUP.md](FIREBASE-SETUP.md) → IAP).

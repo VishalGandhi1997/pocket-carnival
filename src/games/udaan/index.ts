@@ -1,6 +1,7 @@
-// Udaan — a one-tap flyer. A kite fights gravity: TAP to flap upward and
+// Skyglide — a one-tap flyer. A kite fights gravity: TAP to flap upward and
 // thread through the gaps between teal obstacle pairs. Miss one, clip the
 // top, or hit the ground and you're down. Speeds up gently as you score.
+// Each level narrows the gaps and raises the base scroll speed.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
@@ -10,10 +11,16 @@ const GRAVITY = 1000; // constant downward pull on the kite
 const FLAP = -330; // instant upward velocity a tap grants
 const GROUND_H = 44; // solid ground strip at the bottom
 const OBS_W = 58; // obstacle pair column width
-const GAP = 178; // vertical opening the kite flies through
+const GAP = 178; // vertical opening at Level 1 (shrinks per level)
 const SPACING = 232; // horizontal distance between successive pairs
-const BASE_SPEED = 132; // starting scroll speed
+const BASE_SPEED = 132; // Level 1 starting scroll speed
 const KITE_R = 15; // kite collision radius
+
+// ── Level curve ── gap −4%/level (cap −28%), speed +6%/level (cap +50%).
+// Level up when a run scores at least 10 + level × 5.
+const gapFor = (level: number) => GAP * (1 - Math.min(0.28, (level - 1) * 0.04));
+const speedFor = (level: number) => BASE_SPEED * (1 + Math.min(0.5, (level - 1) * 0.06));
+const levelUpAt = (level: number) => 10 + level * 5;
 
 interface Obstacle {
   x: number; // left edge of the column
@@ -22,23 +29,26 @@ interface Obstacle {
 }
 
 export function mountUdaan(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Score", "Best"]);
+  const hud = makeHud(host, ["Level", "Score", "Best"]);
   const gc = createGameCanvas(host, 1.4);
   const { ctx, w, h } = gc;
   const floorY = h - GROUND_H; // ground collision line
   const kiteX = w * 0.28; // kite stays at a fixed x
 
+  let level = sdk.getLevel("udaan");
+  let gap = gapFor(level);
+  let baseSpeed = speedFor(level);
   let kiteY = 0;
   let vel = 0;
   let obstacles: Obstacle[] = [];
   let score = 0;
-  let speed = BASE_SPEED;
+  let speed = baseSpeed;
   let bob = 0; // ready-state hover phase
   let state: "ready" | "play" | "over" = "ready";
 
   // Random gap centre kept clear of the top and the ground.
   function randGapY(): number {
-    const margin = GAP / 2 + 40;
+    const margin = gap / 2 + 40;
     return margin + Math.random() * (floorY - margin * 2);
   }
 
@@ -47,16 +57,20 @@ export function mountUdaan(host: HTMLElement, sdk: Sdk): () => void {
   }
 
   function reset() {
+    level = sdk.getLevel("udaan");
+    gap = gapFor(level);
+    baseSpeed = speedFor(level);
     kiteY = h * 0.45;
     vel = 0;
     score = 0;
-    speed = BASE_SPEED;
+    speed = baseSpeed;
     bob = 0;
     obstacles = [];
     // Pre-seed a couple of pairs off to the right so play begins with runway.
     spawn(w + 60);
     spawn(w + 60 + SPACING);
     state = "ready";
+    hud.set("Level", level);
     hud.set("Score", 0);
     hud.set("Best", sdk.getBest("udaan"));
   }
@@ -77,15 +91,24 @@ export function mountUdaan(host: HTMLElement, sdk: Sdk): () => void {
     state = "over";
     sdk.haptic(60);
     const isBest = sdk.submitScore("udaan", score);
-    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 2)), 1);
-    sdk.addCoins(coins, "Udaan");
+    const need = levelUpAt(level);
+    const leveledUp = score >= need;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("udaan", level);
+    }
+    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 2)), level);
+    sdk.addCoins(coins, "Skyglide");
     hud.set("Best", sdk.getBest("udaan"));
+    hud.set("Level", level);
     showOverlay(gc.canvas, {
-      title: "Down! 🪁",
-      subtitle: `Score ${score}`,
+      title: leveledUp ? "⬆️ Level Up!" : "Down! 🪁",
+      subtitle: leveledUp
+        ? `Level ${level} — narrower gaps, faster wind`
+        : `Score ${score} · ${need - score} more for Level ${level + 1}`,
       coins,
       isBest,
-      mood: "lose",
+      mood: leveledUp ? "win" : "lose",
       primaryLabel: "Play Again",
       onPrimary: reset,
     });
@@ -102,7 +125,7 @@ export function mountUdaan(host: HTMLElement, sdk: Sdk): () => void {
       if (!o.passed && o.x + OBS_W < kiteX - KITE_R) {
         o.passed = true;
         score += 1;
-        speed = BASE_SPEED + score * 3; // gentle ramp keeps it fair
+        speed = baseSpeed + score * 3; // gentle ramp keeps it fair
         hud.set("Score", score);
         sdk.sfx("coin");
       }
@@ -116,8 +139,8 @@ export function mountUdaan(host: HTMLElement, sdk: Sdk): () => void {
     for (const o of obstacles) {
       const withinX = kiteX + KITE_R > o.x && kiteX - KITE_R < o.x + OBS_W;
       if (!withinX) continue;
-      const topGap = o.gapY - GAP / 2;
-      const botGap = o.gapY + GAP / 2;
+      const topGap = o.gapY - gap / 2;
+      const botGap = o.gapY + gap / 2;
       if (kiteY - KITE_R < topGap || kiteY + KITE_R > botGap) return gameOver();
     }
   }
@@ -156,8 +179,8 @@ export function mountUdaan(host: HTMLElement, sdk: Sdk): () => void {
 
     // Obstacle pairs — teal columns above and below each gap.
     for (const o of obstacles) {
-      const topGap = o.gapY - GAP / 2;
-      const botGap = o.gapY + GAP / 2;
+      const topGap = o.gapY - gap / 2;
+      const botGap = o.gapY + gap / 2;
       roundRect(ctx, o.x, 0, OBS_W, topGap, 10, palette.teal);
       roundRect(ctx, o.x, botGap, OBS_W, floorY - botGap, 10, palette.teal);
     }

@@ -1,8 +1,10 @@
-// Dimaag Ki Batti — rapid-fire trivia duel. 10 questions, 10 seconds each.
-// Modes: vs Bot (the bot answers every question alongside you at ~60%
-// accuracy) or Pass & Play (players alternate questions on one phone).
+// Quiz Duel — rapid-fire trivia duel. 10 questions per match.
+// Modes: vs Bot (the bot answers every question alongside you; its accuracy
+// rises and your per-question timer shrinks with your persistent level —
+// beat the bot to level up) or Pass & Play (players alternate questions on
+// one phone; a friendly, unleveled 10-second-per-question match).
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
-import { makeTurnBanner, showOverlay } from "../../engine/ui";
+import { makeHud, makeTurnBanner, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
 interface Question {
@@ -11,7 +13,7 @@ interface Question {
   a: number; // index of the correct option
 }
 
-// Original in-house question bank — short, mixed math / GK / logic.
+// Original in-house question bank — short, mixed math / world GK / logic.
 const BANK: Question[] = [
   { q: "What is 12 × 8?", opts: ["88", "92", "96", "108"], a: 2 },
   { q: "What is 15 + 27?", opts: ["40", "42", "44", "52"], a: 1 },
@@ -25,23 +27,23 @@ const BANK: Question[] = [
   { q: "How many minutes in an hour and a half?", opts: ["60", "75", "90", "120"], a: 2 },
   { q: "How many sides does a hexagon have?", opts: ["5", "6", "7", "8"], a: 1 },
   { q: "How many days are in a leap year?", opts: ["364", "365", "366", "367"], a: 2 },
-  { q: "What is the capital of India?", opts: ["Mumbai", "New Delhi", "Kolkata", "Chennai"], a: 1 },
+  { q: "What is the capital of Australia?", opts: ["Sydney", "Melbourne", "Canberra", "Perth"], a: 2 },
   { q: "What is the capital of Japan?", opts: ["Kyoto", "Osaka", "Tokyo", "Seoul"], a: 2 },
   { q: "What is the capital of France?", opts: ["Lyon", "Paris", "Rome", "Berlin"], a: 1 },
   { q: "Which planet is called the Red Planet?", opts: ["Venus", "Jupiter", "Mars", "Saturn"], a: 2 },
   { q: "Which is the largest planet?", opts: ["Earth", "Saturn", "Neptune", "Jupiter"], a: 3 },
-  { q: "How many players in a cricket team?", opts: ["9", "10", "11", "12"], a: 2 },
+  { q: "How many players does a soccer team have on the field?", opts: ["9", "10", "11", "12"], a: 2 },
   { q: "How many colours are in a rainbow?", opts: ["5", "6", "7", "8"], a: 2 },
   { q: "Which is the largest ocean?", opts: ["Atlantic", "Indian", "Arctic", "Pacific"], a: 3 },
   { q: "Which is the tallest animal?", opts: ["Elephant", "Giraffe", "Camel", "Horse"], a: 1 },
   { q: "How many legs does a spider have?", opts: ["4", "6", "8", "10"], a: 2 },
   { q: "Which gas do plants take in?", opts: ["Oxygen", "Carbon dioxide", "Nitrogen", "Hydrogen"], a: 1 },
-  { q: "What is the national bird of India?", opts: ["Parrot", "Peacock", "Sparrow", "Eagle"], a: 1 },
+  { q: "Which is the largest mammal?", opts: ["Elephant", "Blue whale", "Giraffe", "Hippo"], a: 1 },
   { q: "How many continents are there?", opts: ["5", "6", "7", "8"], a: 2 },
   { q: "Which is the fastest land animal?", opts: ["Lion", "Horse", "Cheetah", "Kangaroo"], a: 2 },
   { q: "Which planet is closest to the Sun?", opts: ["Venus", "Mercury", "Earth", "Mars"], a: 1 },
-  { q: "The Taj Mahal is in which city?", opts: ["Delhi", "Jaipur", "Agra", "Lucknow"], a: 2 },
-  { q: "How many zeros are in one lakh?", opts: ["4", "5", "6", "7"], a: 1 },
+  { q: "At sea level, water boils at how many °C?", opts: ["90", "100", "110", "120"], a: 1 },
+  { q: "How many zeros are in one million?", opts: ["5", "6", "7", "8"], a: 1 },
   { q: "How many weeks are in a year?", opts: ["48", "50", "52", "54"], a: 2 },
   { q: "How many hours are in two days?", opts: ["24", "36", "48", "72"], a: 2 },
   { q: "What sweet food do bees make?", opts: ["Jam", "Honey", "Sugar", "Syrup"], a: 1 },
@@ -52,11 +54,17 @@ const BANK: Question[] = [
 ];
 
 const ROUNDS = 10;
-const Q_TIME = 10; // seconds per question
+const PNP_TIME = 10; // seconds per question in Pass & Play (unleveled)
+
+// Bot-mode level curve: Lv1 bot is a coin-flip (50%), +5% per level up to
+// 88%; the question timer drops 1s every 2 levels from 10s down to 6s.
+const botAccuracy = (level: number) => Math.min(0.88, 0.5 + (level - 1) * 0.05);
+const botModeTime = (level: number) => Math.max(6, 10 - Math.floor((level - 1) / 2));
 
 export function mountDimaag(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | "pnp" }): () => void {
   const mode = opts?.mode ?? "bot";
   const oppName = mode === "bot" ? "Bot" : "P2";
+  const hud = mode === "bot" ? makeHud(host, ["Level"]) : null;
   const banner = makeTurnBanner(host);
   const gc = createGameCanvas(host, 0.9);
   const { ctx } = gc;
@@ -65,7 +73,9 @@ export function mountDimaag(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
   let round = 0;
   let you = 0;
   let opp = 0;
-  let timeLeft = Q_TIME;
+  let level = mode === "bot" ? sdk.getLevel("dimaag") : 1;
+  let qTime = PNP_TIME;
+  let timeLeft = qTime;
   let locked = true; // input frozen between questions / after the match
   let over = false;
   let pendingT = 0;
@@ -85,7 +95,7 @@ export function mountDimaag(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
 
   function refreshBanner() {
     if (over) return;
-    if (mode === "bot") banner.set(`💡 Round ${round + 1} — beat the Bot!`, "you");
+    if (mode === "bot") banner.set(`💡 Round ${round + 1} — beat 🤖 Bot (Lv ${level})!`, "you");
     else if (answeringSide() === 0) banner.set(`💡 Round ${round + 1} — Player 1 answers!`, "you");
     else banner.set(`💡 Round ${round + 1} — Player 2 answers!`, "opp");
   }
@@ -119,7 +129,7 @@ export function mountDimaag(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
 
   function nextQuestion() {
     const q = deck[round];
-    timeLeft = Q_TIME;
+    timeLeft = qTime;
     btns.forEach((b, i) => {
       b.textContent = q.opts[i];
       b.disabled = false;
@@ -145,7 +155,7 @@ export function mountDimaag(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
       if (choice >= 0) paint(btns[choice], palette.pink);
       paint(btns[q.a], palette.teal); // briefly reveal the right answer
     }
-    if (mode === "bot" && Math.random() < 0.6) opp += 10; // bot answers simultaneously
+    if (mode === "bot" && Math.random() < botAccuracy(level)) opp += 10; // bot answers simultaneously
     pendingT = window.setTimeout(() => {
       round++;
       if (round >= ROUNDS) finish();
@@ -157,13 +167,25 @@ export function mountDimaag(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
     over = true;
     const youWon = you > opp;
     const tie = you === opp;
-    const coins = youWon ? sdk.scaleReward(25, 1) : 5;
+    const played = level;
+    const coins = youWon ? sdk.scaleReward(25, played) : sdk.scaleReward(5, played);
     if (youWon) sdk.submitScore("dimaag", sdk.getBest("dimaag") + 1);
-    sdk.addCoins(coins, "Dimaag Ki Batti");
+    sdk.addCoins(coins, "Quiz Duel");
+    // Bot mode only: beating the bot climbs the persistent ladder.
+    const leveledUp = mode === "bot" && youWon;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("dimaag", level);
+      hud?.set("Level", level);
+    }
     banner.set(youWon ? "🏆 You Won!" : tie ? "🤝 It's a Tie" : `${oppName} Wins`, youWon ? "you" : "opp");
+    const acc = Math.round(botAccuracy(level) * 100);
+    let subtitle = `${you} – ${opp}`;
+    if (leveledUp) subtitle = `Big Brain Win! ${you} – ${opp} · Level ${level} — sharper bot (${acc}%), ${botModeTime(level)}s per question`;
+    else if (mode === "bot") subtitle = `${you} – ${opp} · Beat the Bot (Lv ${level}) to reach Level ${level + 1}`;
     showOverlay(gc.canvas, {
-      title: youWon ? "Batti Jal Gayi! 💡" : tie ? "It's a Tie" : "Next Time!",
-      subtitle: `${you} – ${opp}`,
+      title: leveledUp ? "⬆️ Level Up!" : youWon ? "Big Brain Win! 💡" : tie ? "It's a Tie" : "Next Time!",
+      subtitle,
       coins,
       mood: youWon ? "win" : "lose",
       primaryLabel: "Play Again",
@@ -172,6 +194,11 @@ export function mountDimaag(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
   }
 
   function reset() {
+    if (mode === "bot") {
+      level = sdk.getLevel("dimaag");
+      qTime = botModeTime(level);
+      hud?.set("Level", level);
+    } else qTime = PNP_TIME;
     deck = shuffle([...BANK]).slice(0, ROUNDS); // fresh shuffle, no repeats in a match
     round = 0;
     you = 0;
@@ -207,7 +234,7 @@ export function mountDimaag(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
     roundRect(ctx, 0, 0, gc.w, gc.h, 18, palette.bg);
 
     // timer bar across the top
-    const frac = timeLeft / Q_TIME;
+    const frac = timeLeft / qTime;
     roundRect(ctx, 14, 12, gc.w - 28, 10, 5, "rgba(255,248,236,0.18)");
     if (frac > 0.02) {
       const barColor = frac > 0.5 ? palette.teal : frac > 0.25 ? palette.marigold : palette.pink;

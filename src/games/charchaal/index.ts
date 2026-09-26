@@ -1,15 +1,27 @@
-// Char Ki Chaal — four-in-a-row disc drop. Generic grid-drop mechanic
+// Four Up — four-in-a-row disc drop. Generic grid-drop mechanic
 // (public domain rules; original board art/colors, not Hasbro trade dress).
+// Bot mode has a persistent level ladder: the bot gets sharper each level
+// (sloppy → win/block → no free wins → 4-ply minimax). Beat it to level up.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
-import { makeTurnBanner, showOverlay } from "../../engine/ui";
+import { makeHud, makeTurnBanner, showOverlay, type Hud } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
 const COLS = 7;
 const ROWS = 6;
 type Cell = 0 | 1 | 2;
 
+const MINIMAX_DEPTH = 4;
+function botSkillLabel(level: number): string {
+  if (level <= 3) return "bot always takes wins & blocks yours";
+  if (level <= 5) return "bot won't hand you a winning spot";
+  return "bot now plans 4 moves ahead";
+}
+
 export function mountCharKiChaal(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | "pnp" }): () => void {
   const mode = opts?.mode ?? "bot";
+  // Level ladder only applies vs the bot; pass & play stays a friendly match.
+  const hud: Hud | null = mode === "bot" ? makeHud(host, ["Level", "Wins"]) : null;
+  let level = mode === "bot" ? sdk.getLevel("charchaal") : 1;
   const banner = makeTurnBanner(host);
   // Extra top space (vs 0.12) makes room for the drop-arrow band so it's clear
   // you pick a COLUMN and the disc falls in from the top.
@@ -24,6 +36,11 @@ export function mountCharKiChaal(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
   let dropAnim: { col: number; row: number; player: Cell; t: number } | null = null;
 
   function reset() {
+    if (mode === "bot") {
+      level = sdk.getLevel("charchaal");
+      hud?.set("Level", level);
+      hud?.set("Wins", sdk.getBest("charchaal"));
+    }
     board = Array.from({ length: ROWS }, () => Array(COLS).fill(0) as Cell[]);
     turn = 1;
     over = false;
@@ -35,7 +52,7 @@ export function mountCharKiChaal(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
   function refreshBanner() {
     if (over) return;
     if (turn === 1) banner.set("Your turn — drop a disc", "you");
-    else banner.set(mode === "bot" ? "🤖 Bot is thinking…" : "Player 2's turn", "opp");
+    else banner.set(mode === "bot" ? `🤖 Bot (Lv ${level}) is thinking…` : "Player 2's turn", "opp");
   }
 
   function lowestRow(col: number): number {
@@ -82,18 +99,119 @@ export function mountCharKiChaal(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
     if (mode === "bot" && turn === 2 && !over) setTimeout(botMove, 550);
   }
 
+  function validCols(): number[] {
+    return [...Array(COLS).keys()].filter((c) => lowestRow(c) >= 0);
+  }
+
   function botMove() {
     if (over) return;
-    const valid = [...Array(COLS).keys()].filter((c) => lowestRow(c) >= 0);
+    const valid = validCols();
+    if (!valid.length) return;
+    // L1: sloppy — 30% of moves are a random column
+    if (level <= 1 && Math.random() < 0.3) return drop(valid[Math.floor(Math.random() * valid.length)], 2);
+    // L6+: look-ahead search
+    if (level >= 6) return drop(minimaxRoot(valid), 2);
     // 1) win now
     for (const c of valid) if (simWin(c, 2)) return drop(c, 2);
     // 2) block human win
     for (const c of valid) if (simWin(c, 1)) return drop(c, 2);
-    // 3) prefer center columns with slight randomness
-    const weighted = valid
+    // 3) L4-5: never play under a spot that hands you an immediate win
+    let pool = valid;
+    if (level >= 4) {
+      const safe = valid.filter((c) => !givesOpponentWin(c));
+      if (safe.length) pool = safe;
+    }
+    // 4) prefer center columns with slight randomness
+    const weighted = pool
       .map((c) => ({ c, w: 4 - Math.abs(c - 3) + Math.random() }))
       .sort((a, b) => b.w - a.w);
     drop(weighted[0].c, 2);
+  }
+
+  /** After the bot drops in `col`, can the player win on their very next move? */
+  function givesOpponentWin(col: number): boolean {
+    const row = lowestRow(col);
+    if (row < 0) return false;
+    board[row][col] = 2;
+    const bad = validCols().some((c) => simWin(c, 1));
+    board[row][col] = 0;
+    return bad;
+  }
+
+  // ── Minimax (alpha-beta) with a simple 4-cell window evaluation ──
+  function scoreWindow(a: Cell, b: Cell, c: Cell, d: Cell): number {
+    let bot = 0, you = 0;
+    for (const v of [a, b, c, d]) {
+      if (v === 2) bot++;
+      else if (v === 1) you++;
+    }
+    if (bot && you) return 0;
+    if (bot === 3) return 5;
+    if (bot === 2) return 2;
+    if (you === 3) return -4;
+    if (you === 2) return -1;
+    return 0;
+  }
+
+  function evaluate(): number {
+    let score = 0;
+    for (let r = 0; r < ROWS; r++) if (board[r][3] === 2) score += 3;
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++) {
+        if (c + 3 < COLS) score += scoreWindow(board[r][c], board[r][c + 1], board[r][c + 2], board[r][c + 3]);
+        if (r + 3 < ROWS) score += scoreWindow(board[r][c], board[r + 1][c], board[r + 2][c], board[r + 3][c]);
+        if (r + 3 < ROWS && c + 3 < COLS)
+          score += scoreWindow(board[r][c], board[r + 1][c + 1], board[r + 2][c + 2], board[r + 3][c + 3]);
+        if (r + 3 < ROWS && c - 3 >= 0)
+          score += scoreWindow(board[r][c], board[r + 1][c - 1], board[r + 2][c - 2], board[r + 3][c - 3]);
+      }
+    return score;
+  }
+
+  function minimax(depth: number, alpha: number, beta: number, maximizing: boolean): number {
+    const cols = validCols();
+    if (depth === 0 || !cols.length) return evaluate();
+    const player: Cell = maximizing ? 2 : 1;
+    let best = maximizing ? -Infinity : Infinity;
+    for (const c of centerFirst(cols)) {
+      const row = lowestRow(c);
+      board[row][c] = player;
+      let val: number;
+      if (checkWin(board, player)) val = maximizing ? 10000 + depth : -10000 - depth;
+      else val = minimax(depth - 1, alpha, beta, !maximizing);
+      board[row][c] = 0;
+      if (maximizing) {
+        best = Math.max(best, val);
+        alpha = Math.max(alpha, val);
+      } else {
+        best = Math.min(best, val);
+        beta = Math.min(beta, val);
+      }
+      if (alpha >= beta) break;
+    }
+    return best;
+  }
+
+  function minimaxRoot(valid: number[]): number {
+    let bestCol = valid[0];
+    let bestVal = -Infinity;
+    for (const c of centerFirst(valid)) {
+      const row = lowestRow(c);
+      board[row][c] = 2;
+      const val = checkWin(board, 2) ? 100000 : minimax(MINIMAX_DEPTH - 1, -Infinity, Infinity, false);
+      board[row][c] = 0;
+      // tiny jitter so equal lines don't always play identically
+      const jittered = val + Math.random() * 0.5;
+      if (jittered > bestVal) {
+        bestVal = jittered;
+        bestCol = c;
+      }
+    }
+    return bestCol;
+  }
+
+  function centerFirst(cols: number[]): number[] {
+    return [...cols].sort((a, b) => Math.abs(a - 3) - Math.abs(b - 3));
   }
 
   function simWin(col: number, player: Cell): boolean {
@@ -108,12 +226,23 @@ export function mountCharKiChaal(host: HTMLElement, sdk: Sdk, opts?: { mode?: "b
   function endGame(winner: Cell) {
     over = true;
     const youWon = winner === 1;
-    const coins = youWon ? 25 : winner === 0 ? 8 : 5;
+    const leveledUp = mode === "bot" && youWon;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("charchaal", level);
+    }
+    const coins = sdk.scaleReward(youWon ? 25 : winner === 0 ? 8 : 5, level);
     if (youWon) sdk.submitScore("charchaal", sdk.getBest("charchaal") + 1);
-    sdk.addCoins(coins, "Char Ki Chaal");
+    sdk.addCoins(coins, "Four Up");
+    hud?.set("Level", level);
+    hud?.set("Wins", sdk.getBest("charchaal"));
     banner.set(youWon ? "🏆 You Won!" : winner === 0 ? "Board Full — Draw" : `${mode === "bot" ? "Bot" : "Player 2"} Won`, youWon ? "you" : "opp");
+    let subtitle: string | undefined;
+    if (leveledUp) subtitle = `Level ${level} — ${botSkillLabel(level)}`;
+    else if (mode === "bot") subtitle = `Beat the Lv ${level} bot to reach Level ${level + 1}`;
     showOverlay(gc.canvas, {
-      title: youWon ? "Four in a Row! 🏆" : winner === 0 ? "It's a Draw" : "You Lost",
+      title: leveledUp ? "⬆️ Level Up!" : youWon ? "Four in a Row! 🏆" : winner === 0 ? "It's a Draw" : "You Lost",
+      subtitle,
       coins,
       mood: youWon ? "win" : "lose",
       primaryLabel: "Play Again",

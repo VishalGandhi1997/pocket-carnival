@@ -17,7 +17,7 @@ export interface Skin {
 // few days, premium ≈ a week of saving OR a coin pack — that gap is what
 // converts patient players into ad-watchers and impatient ones into buyers.
 export const SKINS: Skin[] = [
-  // ── Naagin (snake) skins: head, body, alt(body stripe) ──
+  // ── Serpent (snake) skins: head, body, alt(body stripe) ──
   { id: "snake_classic", category: "naagin", name: "Classic", emoji: "🐍", cost: 0,
     colors: { head: "#b6ff5a", body: "#06d6a0", alt: "#05b384" } },
   { id: "snake_blaze", category: "naagin", name: "Blaze", emoji: "🔥", cost: 250,
@@ -31,7 +31,7 @@ export const SKINS: Skin[] = [
   { id: "snake_rainbow", category: "naagin", name: "Rainbow", emoji: "🌈", cost: 2500,
     colors: { head: "#ff5c8a", body: "#4cc9f0", alt: "#2ee6a8" } },
 
-  // ── BlockBazi board themes: two 3×3-zone shades ──
+  // ── Blockfit board themes: two 3×3-zone shades ──
   { id: "board_indigo", category: "blockbazi", name: "Indigo", emoji: "🟣", cost: 0,
     colors: { zoneA: "#4e3c9c", zoneB: "#45348c" } },
   { id: "board_sunset", category: "blockbazi", name: "Sunset", emoji: "🌇", cost: 350,

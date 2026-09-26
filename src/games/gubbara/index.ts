@@ -1,5 +1,5 @@
-// Gubbara Pop — tap the rising balloons before they float away. Golden
-// gubbaras pay big, bees sting. Gets faster (and buzzier) as you level up.
+// Balloon Pop — tap the rising balloons before they float away. Golden
+// balloons pay big, bees sting. Gets faster (and buzzier) as you level up.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
@@ -90,12 +90,12 @@ export function mountGubbara(host: HTMLElement, sdk: Sdk): () => void {
       sdk.setLevel("gubbara", level);
     }
     const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 15)), level);
-    sdk.addCoins(coins, "Gubbara Pop");
+    sdk.addCoins(coins, "Balloon Pop");
     hud.set("Best", sdk.getBest("gubbara"));
     hud.set("Level", level);
     const need = levelUpAt(level);
     showOverlay(gc.canvas, {
-      title: leveledUp ? "⬆️ Level Up!" : "Phat Gaya! 🎈",
+      title: leveledUp ? "⬆️ Level Up!" : "Popped Out! 🎈",
       subtitle: leveledUp
         ? `Now Level ${level} — faster balloons, bigger coins`
         : `Score ${score} · ${Math.max(0, need - score)} more to reach Level ${level + 1}`,

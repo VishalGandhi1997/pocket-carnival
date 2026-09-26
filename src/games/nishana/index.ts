@@ -1,15 +1,19 @@
-// Nishana — precision timing archery. A dot orbits the target ring; tap
+// Bullseye — precision timing archery. A dot orbits the target ring; tap
 // when it's inside the teal arc. Every hit speeds it up, three misses end
-// the run. Level raises base speed and shrinks the arc.
+// the run. Level raises base speed and shrinks the arc (all capped so high
+// levels stay hard but possible).
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
 const TAU = Math.PI * 2;
-// (0.9 + 1*0.12) * 1.5 ≈ 1.53 rad/s → Level 1 lap ≈ 4.1s.
-const baseSpeed = (level: number) => (0.9 + level * 0.12) * 1.5;
+// (0.9 + 1*0.12) * 1.5 ≈ 1.53 rad/s → Level 1 lap ≈ 4.1s. Speed growth stops
+// at Level 12 (≈3.5 rad/s), the arc bottoms out at 18°, and the hit target
+// stops growing at Level 10 — so the ladder never becomes impossible.
+const baseSpeed = (level: number) => (0.9 + Math.min(level, 12) * 0.12) * 1.5;
 const arcWidth = (level: number) => (Math.max(18, 46 - level * 3) * Math.PI) / 180;
-const levelUpAt = (level: number) => 12 + level * 3;
+const levelUpAt = (level: number) => 12 + Math.min(level, 10) * 3;
+const MAX_SPEED = 5; // rad/s ceiling for the per-hit speed-up
 
 /** Normalized angular difference in (-π, π]. */
 function angDiff(a: number, b: number): number {
@@ -92,7 +96,7 @@ export function mountNishana(host: HTMLElement, sdk: Sdk): () => void {
     score += perfect ? 15 : 10;
     hits++;
     streak++;
-    speed *= 1.04;
+    speed = Math.min(MAX_SPEED, speed * 1.04);
     traveled = 0;
     sdk.haptic(30);
     if (perfect) sdk.sfx("clear");
@@ -120,11 +124,11 @@ export function mountNishana(host: HTMLElement, sdk: Sdk): () => void {
       sdk.setLevel("nishana", level);
     }
     const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 12)), level);
-    sdk.addCoins(coins, "Nishana");
+    sdk.addCoins(coins, "Bullseye");
     hud.set("Best", sdk.getBest("nishana"));
     hud.set("Level", level);
     showOverlay(gc.canvas, {
-      title: leveledUp ? "⬆️ Level Up!" : "Chuk Gaye! 🏹",
+      title: leveledUp ? "⬆️ Level Up!" : "Missed! 🏹",
       subtitle: leveledUp
         ? `Now Level ${level} — faster dot, tighter target`
         : `Score ${score} · ${hits} hits · ${Math.max(0, need - hits)} more hits for Level ${level + 1}`,

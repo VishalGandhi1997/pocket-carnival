@@ -1,73 +1,71 @@
-# Master Roster — 30 Mini-Games
+# Master Roster — 40 Mini-Games
 
-> **STATUS: ALL 35 GAMES ARE BUILT AND LIVE** (27 solo + 8 multiplayer, every
-> multiplayer title with vs-Bot and Pass & Play). The wave tables below are
-> kept for historical planning context.
+> **STATUS: ALL 40 GAMES ARE BUILT AND LIVE** (32 solo + 8 multiplayer; every
+> multiplayer title has vs-Bot and Pass & Play).
 >
-> **Skill-ladder pack (progressive-difficulty solo games, persistent levels):**
-> Chamak 🔆 (sequence memory) · Hisab Kitab 🧮 (speed maths) · Gubbara Pop 🎈
-> (reflex popping with decoys) · Bhul Bhulaiya 🌀 (growing slide-mazes) ·
-> Nishana 🏹 (shrinking-window timing). Each reads/writes `sdk.getLevel` /
-> `setLevel`, gets harder every level, and pays bigger `scaleReward` coins.
+> **Every game has a persistent difficulty ladder.** Solo games read/write
+> `sdk.getLevel(id)` / `setLevel`, show Level in the HUD, get harder each level
+> (capped so they never become impossible) and pay more via `scaleReward`.
+> Multiplayer games level the **bot** (vs-Bot mode only); Pass & Play is unlevelled.
 
-Working titles are original (no competitor names). Every game uses generic public-domain mechanics with our own theme, art, and rules ("take the verb, never the skin").
+Titles are original and international (no competitor names). Every game uses a
+generic public-domain mechanic with our own theme, art and rules.
 
-**Legend:** Complexity L/M/H · Wave = build order · MP mode: PnP = pass-and-play (same device), Bots, Async (turn-by-turn via server), RT = real-time online
+**Storage ids never change.** Display names were internationalized in v1.2, but
+each game keeps its original `id` (the folder name) so existing saves, best
+scores and levels carry over.
 
-## Single-player (22)
+## Single-player (32)
 
-| # | Title | Mechanic (generic) | Complexity | Wave | Notes |
-|---|-------|--------------------|------------|------|-------|
-| 1 | **BlockBazi** | Grid-fit block puzzle (9×9 + 3×3 bonus zones) | L | 1 | #1 format globally; flagship |
-| 2 | **Rang Sort** | Color sort/pour puzzle | L | 1 | Spice-tin / bangle theme |
-| 3 | **Do Guna** | Slide-merge numbers (2048-style; open-source-origin mechanic) | L | 1 | Quick MVP filler |
-| 4 | **Yaad Rakh** | Memory pair-matching | L | 1 | Kids/family reach |
-| 5 | **Naagin** | Classic snake | L | 1 | Nostalgia (Nokia-era India) |
-| 6 | **Tila Match** | Layered tile triple-match (mahjong-solitaire style) | L-M | 2 | +189% YoY category |
-| 7 | **Tikki Drop** | Peg-board ball drop physics (carnival framing, NO casino styling) | L | 2 | Ad inventory game |
-| 8 | **Surang** | Logic minefield (minesweeper-style) | L | 2 | Evergreen |
-| 9 | **Toda Phoda** | Brick breaker / paddle-ball | L | 2 | Arcade evergreen |
-| 10 | **Udaan** | One-tap flyer through gaps | L | 2 | Hyper-casual, clip-friendly |
-| 11 | **Chhat Pe Chhat** | Timing-based tower stacker | L | 2 | One-tap, session filler |
-| 12 | **Bubble Bazaar** | Bubble shooter (match-3 color pop) | M | 2 | Evergreen, female-skewing |
-| 13 | **Shabd Jod** | Word connect (EN + Hindi packs) | M | 2 | Regional-language moat |
-| 14 | **Jodi Merge** | Merge-2 lite with orders | M | 3 | Fastest-growing IAP mechanic |
-| 15 | **Khol Do!** | Bolt/pin removal physics puzzle | M | 3 | 2.8× YoY category |
-| 16 | **Nom City** | Eat-&-grow arena vs bots | M | 3 | Hole-style; bots = no netcode |
-| 17 | **Sudoku Sadhana** | Classic sudoku with hints | M | 3 | Public domain, 35+ audience |
-| 18 | **Word Khoj** | Word search grid (EN + HI) | L | 3 | Cheap once Shabd Jod ships |
-| 19 | **Rangoli Logic** | Picture logic grid (nonogram-style) | M | 3 | Rangoli reveal theme |
-| 20 | **Tukda Tukda** | Jigsaw puzzle (our own art) | M | 3 | Long sessions, relaxing |
-| 21 | **Chai Empire** | Idle tapper / shop builder | M | 4 | Long-tail retention |
-| 22 | **Local Dash** | Endless lane runner (Indian streets) | M-H | 4 | Biggest build; arcade = 19% of India downloads |
+| Title | id | Mechanic | What gets harder per level |
+|---|---|---|---|
+| **Blockfit** | blockbazi | Grid-fit block puzzle (9×9 + 3×3 zones) | More awkward pieces; higher score target |
+| **Color Pour** | rangsort | Color sort/pour | More colors (3 → 7) |
+| **Double Up** | doguna | Slide-merge numbers | Goal tile doubles (128 → 4096); more 4-spawns |
+| **Recall** | yaadrakh | Memory pairs | Grid grows (4×3 → 5×6); memorize-peek from L3; tighter par |
+| **Serpent** | naagin | Classic snake | Faster start; higher score target |
+| **Peg Drop** | tikkidrop | Peg-board ball drop | Higher target, fewer drops, more peg rows |
+| **Tile Trio** | tilamatch | Layered triple-tile match | More tile faces; extra layer from L4 |
+| **Minefield** | surang | Minesweeper-style logic | Bigger grid, higher mine density |
+| **Brick Smash** | todaphoda | Brick breaker | Faster ball, smaller paddle, 2-hit bricks, more rows |
+| **Skyglide** | udaan | One-tap flyer | Narrower gaps, faster scroll |
+| **Stack Tower** | chhat | Timing tower stacker | Narrower blocks, faster slide, taller target |
+| **Bubble Burst** | bubble | Bubble shooter | More colors, rows drop sooner, more starting rows |
+| **Word Ring** | shabdjod | Word connect | 5 → 7 letters, 3 → 5 words (30 hand-checked levels) |
+| **Merge Garden** | jodimerge | Merge-2 with orders | More orders, higher-tier orders, fewer starters |
+| **Unbolt** | kholdo | Bolt/plate removal | More plates (4 → 8) |
+| **Nom City** | nomcity | Eat-and-grow arena | Less time, higher target |
+| **Sudoku Zen** | sudoku | Sudoku | More blanks (36 → 58); mistake cap from L3 |
+| **Word Hunt** | wordkhoj | Word search | Bigger grid, more words, backwards words from L3 |
+| **Pixel Logic** | rangoli | Nonogram-style picture logic | Grid grows (6×6 → 10×10) |
+| **Jigsaw Scenes** | tukda | Jigsaw | 3×3 → 4×4 → 5×5 pieces; tighter snap from L4 |
+| **Café Empire** | chai | Idle tapper / shop builder | Brew goal ~1000·L^1.5; pricier upgrades |
+| **Traffic Dash** | localdash | Endless lane runner | Faster start, denser traffic, higher target |
+| **Glow Echo** | chamak | Sequence memory | Longer patterns, faster playback |
+| **Math Rush** | hisab | Speed maths | Bigger numbers, new operations, less time |
+| **Balloon Pop** | gubbara | Reflex popping with decoys | Faster balloons, more bees |
+| **Slide Maze** | bhulbhulaiya | Ice-slide maze | Bigger mazes |
+| **Bullseye** | nishana | Timing window | Smaller zone, faster dot |
+| **Pipeline** 🆕 | pipeline | Rotate-the-pipes | Grid 4×4 → 9×9, twistier paths; move limit |
+| **Switchboard** 🆕 | switchboard | Lights-out toggle | Grid 3×3 → 7×7, deeper scramble; par limit |
+| **Paint Flood** 🆕 | paintflood | Flood-fill | Board 8×8 → 16×16, 4 → 7 colors, less move slack |
+| **Pin Strike** 🆕 | pinstrike | Throw pins into a spinning target | More pins & obstacles, faster spin, reversals (L3), surges (L6) |
+| **Tile Slider** 🆕 | slider | Sliding number puzzle | Deeper shuffle; 3×3 → 4×4 (L4) → 5×5 (L8) |
 
-## Multiplayer (8)
+## Multiplayer (8) — vs Bot + Pass & Play
 
-| # | Title | Mechanic (generic) | MP modes | Complexity | Wave |
-|---|-------|--------------------|----------|------------|------|
-| 23 | **Chaupar Champs** | Ludo/Pachisi board race (public domain) | PnP → Bots → RT | M | 2 |
-| 24 | **Sanp Sidhi** | Snakes & ladders (public domain) | PnP → Bots → RT | L | 2 |
-| 25 | **Dimaag Ki Batti** | Trivia battles (original question bank) | Solo → Async 1v1 | L | 2 |
-| 26 | **Kata Kat** | Dots & boxes (public domain) | PnP → Bots → Async | L | 3 |
-| 27 | **Char Ki Chaal** | Four-in-a-row disc drop (generic mechanic; avoid Hasbro trade dress) | PnP → Bots → Async | L | 3 |
-| 28 | **Paddle Panga** | Pong-style paddle duel | Same-screen 2P → Bots | L | 3 |
-| 29 | **Carrom Clash** | Carrom-style flick striker (Indian classic) | PnP → Bots → RT | M-H | 4 |
-| 30 | **Patta Party** | Classic sevens/trick card game — FREE-PLAY ONLY (no stakes; India 2025 RMG law) | Bots → Async | M | 4 |
+| Title | id | Mechanic | Bot ladder (vs-Bot mode) |
+|---|---|---|---|
+| **Race Home** | chaupar | Pachisi-style board race | Random → captures → avoids danger, prefers safe cells |
+| **Snakes & Ladders** | sanpsidhi | Snakes & ladders | Board gets more snakes, fewer ladders |
+| **Four Up** | charchaal | Four-in-a-row disc drop | Sloppy → win/block → avoids traps → minimax |
+| **Paddle Duel** | paddle | Pong-style duel | Faster, more accurate bot; faster ball |
+| **Box Claim** | katakat | Dots & boxes | Random → safe play → chain-aware; 5×5 grid from L3 |
+| **Quiz Duel** | dimaag | Trivia battle | Bot accuracy 50% → 88%; shorter timer |
+| **Carrom Clash** | carrom | Flick-striker board game | Less aim noise; picks best shots |
+| **Card Duel** | patta | War-style trick game (no stakes) | Must win by a bigger margin |
 
-## Build waves
-- **Wave 1 (platform MVP) — ✅ shipped:** shell + SDK + games 1–5, all playable single-player, zero backend
-- **Wave 2 — ✅ shipped:** all 5 core multiplayer games (23, 24, 25, 26, 28 in the roster above) — Chaupar Champs, Sanp Sidhi, Char Ki Chaal, Kata Kat, Paddle Panga — each with vs-Bot AI + local Pass & Play, a mode-select screen, and a per-game "❓ How to Play" tutorial modal (auto-shown on first visit, reopenable anytime).
-- **Wave 3:** remaining single-player (tile match, merge, unscrew, sudoku, nonogram) + trivia/carrom/cards multiplayer, async play via Firebase
-- **Wave 4:** heavy builds (runner, idle) + real-time online multiplayer (Colyseus) + Android wrap via Capacitor
-
-## Multiplayer games shipped so far
-| Game | Modes | Notes |
-|---|---|---|
-| Chaupar Champs | vs Bot, Pass & Play | Ring+home-stretch race, 2 tokens/player, capture + safe cells, exact-roll finish |
-| Sanp Sidhi | vs Bot, Pass & Play | Classic boustrophedon board, original ladder/snake layout |
-| Char Ki Chaal | vs Bot, Pass & Play | Bot: win-now → block-opponent → center-weighted heuristic |
-| Kata Kat | vs Bot, Pass & Play | Bot avoids giving away 3rd sides; greedy chain-completion |
-| Paddle Panga | vs Bot, Pass & Play | True simultaneous 2-finger touch for same-device Pass & Play |
-
-## Multiplayer rollout strategy (verified from research)
-Category leaders (Hole.io etc.) ship with **bots**, not real netcode. We follow the same path: pass-and-play (zero backend) → bots (offline AI) → async turns (Firebase) → real-time (only where it matters: Ludo, Carrom).
+## Multiplayer rollout strategy
+Category leaders ship with **bots**, not real netcode. We follow the same path:
+pass-and-play (zero backend) → bots (offline AI) → async turns (Firebase) →
+real-time only where it matters.

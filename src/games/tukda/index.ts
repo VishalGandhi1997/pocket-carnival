@@ -1,12 +1,16 @@
-// Tukda Tukda — 3×3 jigsaw over a procedurally painted landscape. Every round
-// paints a fresh scene (sky gradient, glowing sun/moon, hills, water, stars)
-// on an offscreen canvas, slices it into 9 tiles, and scatters them in a tray.
+// Jigsaw Scenes — square-tile jigsaw over a procedurally painted landscape.
+// Every round paints a fresh scene (sky gradient, glowing sun/moon, hills,
+// water, stars) on an offscreen canvas, slices it into tiles, and scatters
+// them in a tray. Completing a picture levels up: 3×3 → 4×4 → 5×5 tiles, and
+// from Level 4 pieces must be dropped more precisely to snap.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
-const GRID = 3;
-const SNAP = 30; // px from the correct slot centre that counts as placed
+// ── Level curve ──
+const gridFor = (level: number) => (level <= 2 ? 3 : level <= 5 ? 4 : 5);
+// px from the correct slot centre that counts as placed (tighter from L4)
+const snapFor = (level: number) => (level >= 4 ? 18 : 30);
 const RES = 2; // offscreen supersampling so tiles stay crisp on retina
 const TRAY_SCALE = 0.8; // loose pieces render smaller until placed/dragged
 
@@ -47,22 +51,34 @@ interface Piece {
 }
 
 export function mountTukda(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Placed", "Time"]);
+  const hud = makeHud(host, ["Level", "Placed", "Time"]);
   const gc = createGameCanvas(host, 1.5); // board on top, tray below
   const { ctx, w, h } = gc;
 
-  const S = Math.floor((w * 0.9) / GRID) * GRID; // board size, divisible by 3
-  const cell = S / GRID; // full on-screen tile size
-  const src = cell * RES; // tile size inside the offscreen bitmap
-  const boardX = (w - S) / 2;
+  // Board geometry depends on the level's tile grid, recomputed each round.
+  let level = sdk.getLevel("tukda");
+  let GRID = gridFor(level);
+  let snap = snapFor(level);
+  let S = 0; // board size, divisible by GRID
+  let cell = 0; // full on-screen tile size
+  let src = 0; // tile size inside the offscreen bitmap
+  let boardX = 0;
   const boardY = 14;
-  const trayTop = boardY + S + 12;
+  let trayTop = 0;
 
   // ── Offscreen picture, repainted with fresh randomness every round ──
   const off = document.createElement("canvas");
-  off.width = S * RES;
-  off.height = S * RES;
   const octx = off.getContext("2d")!;
+
+  function layout() {
+    S = Math.floor((w * 0.9) / GRID) * GRID;
+    cell = S / GRID;
+    src = cell * RES;
+    boardX = (w - S) / 2;
+    trayTop = boardY + S + 12;
+    off.width = S * RES; // resizing also clears the bitmap + transform
+    off.height = S * RES;
+  }
 
   function paintScene() {
     octx.setTransform(RES, 0, 0, RES, 0, 0); // paint in S-space
@@ -140,6 +156,10 @@ export function mountTukda(host: HTMLElement, sdk: Sdk): () => void {
   let startT = 0;
 
   function reset() {
+    level = sdk.getLevel("tukda");
+    GRID = gridFor(level);
+    snap = snapFor(level);
+    layout();
     paintScene();
     placed = 0;
     done = false;
@@ -156,6 +176,7 @@ export function mountTukda(host: HTMLElement, sdk: Sdk): () => void {
           locked: false,
         });
     pieces.sort(() => Math.random() - 0.5); // random stacking order too
+    hud.set("Level", level);
     hud.set("Placed", `0/${GRID * GRID}`);
     hud.set("Time", "0s");
   }
@@ -187,7 +208,7 @@ export function mountTukda(host: HTMLElement, sdk: Sdk): () => void {
     if (!drag) return;
     const pc = drag.pc;
     drag = null;
-    if (Math.hypot(pc.x - slotCX(pc), pc.y - slotCY(pc)) <= SNAP) {
+    if (Math.hypot(pc.x - slotCX(pc), pc.y - slotCY(pc)) <= snap) {
       pc.x = slotCX(pc);
       pc.y = slotCY(pc);
       pc.locked = true;
@@ -202,14 +223,27 @@ export function mountTukda(host: HTMLElement, sdk: Sdk): () => void {
   function win() {
     done = true;
     const seconds = Math.max(1, Math.round((performance.now() - startT) / 1000));
-    const score = Math.max(20, 300 - seconds * 2);
+    // Par grows with piece count so bigger puzzles aren't penalised for time.
+    const par = GRID * GRID * 20 + 120;
+    const score = Math.max(20, par - seconds * 2);
     const isBest = sdk.submitScore("tukda", score);
-    const coins = sdk.scaleReward(Math.max(3, Math.floor(score / 25)), 1);
-    sdk.addCoins(coins, "Tukda Tukda");
+    const prevGrid = GRID;
+    level += 1;
+    sdk.setLevel("tukda", level);
+    hud.set("Level", level);
+    const coins = sdk.scaleReward(Math.max(3, Math.floor(score / 25)), level);
+    sdk.addCoins(coins, "Jigsaw Scenes");
     sdk.sfx("clear");
+    const g = gridFor(level);
+    const harder =
+      g > prevGrid
+        ? `${g * g} pieces (${g}×${g})`
+        : level === 4
+          ? "pieces snap only when dropped precisely"
+          : `${g * g} pieces, bigger coins`;
     showOverlay(gc.canvas, {
-      title: "Picture Perfect! 🧩",
-      subtitle: `${seconds}s`,
+      title: "⬆️ Level Up!",
+      subtitle: `Picture perfect in ${seconds}s · Level ${level} — ${harder}`,
       coins,
       isBest,
       primaryLabel: "New Puzzle",

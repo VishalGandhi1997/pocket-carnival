@@ -1,16 +1,33 @@
-// Kata Kat — dots & boxes. Tap between two dots to draw a line;
+// Box Claim — dots & boxes. Tap between two dots to draw a line;
 // complete a box's fourth side to claim it (and go again).
+// Bot mode has a persistent level ladder: the bot stops blundering, the grid
+// grows to 5×5 boxes at Level 3, and from Level 4 it sacrifices only the
+// shortest chains. Beat the bot to level up.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, makeTurnBanner, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
-const DOTS = 5; // 5x5 dots -> 4x4 = 16 boxes
-const BOXES = DOTS - 1;
 type Owner = 0 | 1 | 2;
+type Edge = { kind: "h" | "v"; r: number; c: number };
+
+// ── Level curve (bot mode) ──
+const gridBoxes = (level: number) => (level >= 3 ? 5 : 4); // boxes per side
+const botBlunderChance = (level: number) => (level <= 1 ? 0.35 : 0);
+const botChainAware = (level: number) => level >= 4;
+function levelUpLabel(level: number): string {
+  if (level === 2) return "the bot stops handing out free boxes";
+  if (level === 3) return "bigger 5×5 grid";
+  if (level === 4) return "the bot now gives away only its shortest chains";
+  return "5×5 grid, chain-savvy bot";
+}
 
 export function mountKataKat(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | "pnp" }): () => void {
   const mode = opts?.mode ?? "bot";
-  const hud = makeHud(host, ["You", mode === "bot" ? "Bot" : "P2"]);
+  // Level ladder only applies vs the bot; pass & play stays a friendly 4×4 match.
+  let level = mode === "bot" ? sdk.getLevel("katakat") : 1;
+  let BOXES = 4;
+  let DOTS = BOXES + 1;
+  const hud = makeHud(host, mode === "bot" ? ["Level", "You", "Bot"] : ["You", "P2"]);
   const banner = makeTurnBanner(host);
   const gc = createGameCanvas(host, 1.05);
   const { ctx } = gc;
@@ -22,6 +39,12 @@ export function mountKataKat(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
   let over = false;
 
   function reset() {
+    if (mode === "bot") {
+      level = sdk.getLevel("katakat");
+      hud.set("Level", level);
+    }
+    BOXES = mode === "bot" ? gridBoxes(level) : 4;
+    DOTS = BOXES + 1;
     h = Array.from({ length: DOTS }, () => Array(BOXES).fill(0) as Owner[]);
     v = Array.from({ length: BOXES }, () => Array(DOTS).fill(0) as Owner[]);
     boxOwner = Array.from({ length: BOXES }, () => Array(BOXES).fill(0) as Owner[]);
@@ -35,7 +58,7 @@ export function mountKataKat(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
   function refreshBanner() {
     if (over) return;
     if (turn === 1) banner.set("Your turn — draw a line", "you");
-    else banner.set(mode === "bot" ? "🤖 Bot is thinking…" : "Player 2's turn", "opp");
+    else banner.set(mode === "bot" ? `🤖 Bot (Lv ${level}) is thinking…` : "Player 2's turn", "opp");
   }
 
   function boxSides(br: number, bc: number) {
@@ -91,12 +114,21 @@ export function mountKataKat(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
     over = true;
     const you = totalBoxes(1), opp = totalBoxes(2);
     const youWon = you > opp;
-    const coins = youWon ? 28 : you === opp ? 10 : 6;
+    const leveledUp = mode === "bot" && youWon;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("katakat", level);
+      hud.set("Level", level);
+    }
+    const coins = sdk.scaleReward(youWon ? 28 : you === opp ? 10 : 6, level);
     if (youWon) sdk.submitScore("katakat", sdk.getBest("katakat") + 1);
-    sdk.addCoins(coins, "Kata Kat");
+    sdk.addCoins(coins, "Box Claim");
+    let subtitle = `${you} – ${opp} boxes`;
+    if (leveledUp) subtitle = `${you} – ${opp} boxes · Level ${level} — ${levelUpLabel(level)}`;
+    else if (mode === "bot") subtitle = `${you} – ${opp} boxes · beat the Lv ${level} bot to reach Level ${level + 1}`;
     showOverlay(gc.canvas, {
-      title: youWon ? "You Won! 🏆" : you === opp ? "It's a Tie" : "You Lost",
-      subtitle: `${you} – ${opp} boxes`,
+      title: leveledUp ? "⬆️ Level Up!" : youWon ? "You Won! 🏆" : you === opp ? "It's a Tie" : "You Lost",
+      subtitle,
       coins,
       mood: youWon ? "win" : "lose",
       primaryLabel: "Play Again",
@@ -104,8 +136,8 @@ export function mountKataKat(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
     });
   }
 
-  function allEdges(): { kind: "h" | "v"; r: number; c: number }[] {
-    const out: { kind: "h" | "v"; r: number; c: number }[] = [];
+  function allEdges(): Edge[] {
+    const out: Edge[] = [];
     for (let r = 0; r < DOTS; r++) for (let c = 0; c < BOXES; c++) if (h[r][c] === 0) out.push({ kind: "h", r, c });
     for (let r = 0; r < BOXES; r++) for (let c = 0; c < DOTS; c++) if (v[r][c] === 0) out.push({ kind: "v", r, c });
     return out;
@@ -120,10 +152,41 @@ export function mountKataKat(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
     return false;
   }
 
+  /** Boxes the opponent could chain-capture right after this edge is drawn. */
+  function giveawayIfPlayed(e: Edge): number {
+    const hs = h.map((row) => [...row]);
+    const vs = v.map((row) => [...row]);
+    if (e.kind === "h") hs[e.r][e.c] = 2;
+    else vs[e.r][e.c] = 2;
+    let taken = 0;
+    for (let found = true; found; ) {
+      found = false;
+      for (let br = 0; br < BOXES; br++)
+        for (let bc = 0; bc < BOXES; bc++) {
+          const sides = [hs[br][bc], hs[br + 1][bc], vs[br][bc], vs[br][bc + 1]];
+          if (sides.filter((x) => x !== 0).length !== 3) continue;
+          // opponent completes this box, which may open the next one in the chain
+          if (!hs[br][bc]) hs[br][bc] = 1;
+          else if (!hs[br + 1][bc]) hs[br + 1][bc] = 1;
+          else if (!vs[br][bc]) vs[br][bc] = 1;
+          else vs[br][bc + 1] = 1;
+          taken++;
+          found = true;
+        }
+    }
+    return taken;
+  }
+
   function botMove() {
     if (over) return;
     const edges = allEdges();
-    let best: { kind: "h" | "v"; r: number; c: number; gain: number } | null = null;
+    if (!edges.length) return;
+    // L1: sometimes just scribbles anywhere (even handing over boxes)
+    if (Math.random() < botBlunderChance(level)) {
+      const e = edges[Math.floor(Math.random() * edges.length)];
+      return applyEdge(e.kind, e.r, e.c, 2);
+    }
+    let best: (Edge & { gain: number }) | null = null;
     for (const e of edges) {
       const boxes = e.kind === "h" ? boxesForHEdge(e.r, e.c) : boxesForVEdge(e.r, e.c);
       const gain = boxes.filter(([br, bc]) => boxSides(br, bc).filter((s) => s !== 0).length === 3).length;
@@ -131,6 +194,19 @@ export function mountKataKat(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
     }
     if (best) return applyEdge(best.kind, best.r, best.c, 2);
     const safe = edges.filter((e) => !wouldGiveThirdSide(e.kind, e.r, e.c));
+    if (!safe.length && botChainAware(level)) {
+      // L4+: forced to open something — sacrifice the shortest chain
+      let pick = edges[0];
+      let least = Infinity;
+      for (const e of edges) {
+        const n = giveawayIfPlayed(e) + Math.random() * 0.1; // jitter breaks ties
+        if (n < least) {
+          least = n;
+          pick = e;
+        }
+      }
+      return applyEdge(pick.kind, pick.r, pick.c, 2);
+    }
     const pick = (safe.length ? safe : edges)[Math.floor(Math.random() * (safe.length ? safe.length : edges.length))];
     applyEdge(pick.kind, pick.r, pick.c, 2);
   }

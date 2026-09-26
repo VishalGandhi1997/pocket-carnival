@@ -12,7 +12,7 @@ export interface Product {
   title: string;
   emoji: string;
   // FALLBACK price for the browser/preview only. On a real device we ignore
-  // this and show the store's own localized price (₹ in India, $ in the US, …).
+  // this and show the store's own localized price ($ in the US, € in Europe, …).
   // Google/Apple pick the currency from the user's STORE ACCOUNT country, not
   // their IP/GPS — so we never geolocate or convert currency ourselves.
   priceLabel: string;
@@ -22,10 +22,10 @@ export interface Product {
 }
 
 export const PRODUCTS: Product[] = [
-  { id: "coins_small", title: "Pocket of Coins", emoji: "🪙", priceLabel: "₹79", coins: 500 },
-  { id: "coins_medium", title: "Bag of Coins", emoji: "💰", priceLabel: "₹249", coins: 2000, best: true },
-  { id: "coins_large", title: "Chest of Coins", emoji: "🎁", priceLabel: "₹499", coins: 5000 },
-  { id: "remove_ads", title: "Remove Ads", emoji: "🚫", priceLabel: "₹199", removeAds: true },
+  { id: "coins_small", title: "Pocket of Coins", emoji: "🪙", priceLabel: "$0.99", coins: 500 },
+  { id: "coins_medium", title: "Bag of Coins", emoji: "💰", priceLabel: "$2.99", coins: 2000, best: true },
+  { id: "coins_large", title: "Chest of Coins", emoji: "🎁", priceLabel: "$5.99", coins: 5000 },
+  { id: "remove_ads", title: "Remove Ads", emoji: "🚫", priceLabel: "$2.49", removeAds: true },
 ];
 
 const isNative = Capacitor.isNativePlatform();

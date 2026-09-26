@@ -1,4 +1,4 @@
-// Bhul Bhulaiya — procedural maze escape. Swipe to ICE-SLIDE: you glide
+// Slide Maze — procedural maze escape. Swipe to ICE-SLIDE: you glide
 // cell-by-cell until a wall stops you, so every maze is a routing puzzle,
 // not a stroll. Reach the glowing door 🚪; grab 🪙 tucked into dead ends.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
@@ -119,14 +119,18 @@ export function mountBhulBhulaiya(host: HTMLElement, sdk: Sdk): () => void {
   function win() {
     won = true;
     const score = 100 + collected * 15 + Math.max(0, N * 3 - moves) * 2;
-    level += 1; // level up on EVERY escape — the next maze grows
+    level += 1; // level up on EVERY escape — the next maze grows (caps at 15×15)
     sdk.setLevel("bhulbhulaiya", level);
+    const nextN = Math.min(6 + level, 15);
     const isBest = sdk.submitScore("bhulbhulaiya", score);
     const reward = sdk.scaleReward(5 + Math.floor(score / 25), level);
-    sdk.addCoins(reward, "Bhul Bhulaiya");
+    sdk.addCoins(reward, "Slide Maze");
     showOverlay(gc.canvas, {
-      title: "Nikal Gaye! 🌀",
-      subtitle: `Level ${level - 1} escaped — next maze is bigger`,
+      title: "⬆️ Level Up!",
+      subtitle:
+        nextN > N
+          ? `Escaped! Level ${level} — bigger ${nextN}×${nextN} maze`
+          : `Escaped! Level ${level} — fresh ${nextN}×${nextN} maze`,
       coins: reward,
       isBest,
       mood: "win",

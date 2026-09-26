@@ -43,7 +43,7 @@ function ensureBgGlyphs() {
   if (document.querySelector(".bg-glyphs")) return;
   const wrap = document.createElement("div");
   wrap.className = "bg-glyphs";
-  const glyphs = ["🎲", "🧩", "🎯", "🪁", "⭐", "🎪", "🃏", "🏏"];
+  const glyphs = ["🎲", "🧩", "🎯", "🪁", "⭐", "🎪", "🃏", "⚽"];
   glyphs.forEach((g, i) => {
     const s = document.createElement("span");
     s.textContent = g;
@@ -253,7 +253,7 @@ async function showShop() {
   // Loading state while we fetch localized store prices.
   card.innerHTML = `<div class="howto-emoji">🛒</div><div class="howto-title">Shop</div>
     <div class="ms-note">Loading prices…</div>`;
-  // Localized store prices (₹ / $ / … per the user's store account). Empty in
+  // Localized store prices ($ / € / … per the user's store account). Empty in
   // the browser → falls back to each product's priceLabel.
   const storePrices = await loadStorePrices();
   if (!ov.isConnected) return; // modal closed while awaiting
@@ -521,7 +521,7 @@ export function showWelcome() {
   wrap.className = "welcome";
   wrap.innerHTML = `
     <div class="w-logo">Khel<em>Mela</em></div>
-    <div class="w-sub">35 games, one app. Jump straight in.</div>
+    <div class="w-sub">40 games, one app. Jump straight in.</div>
     <div class="w-avatars">
       ${AVATARS.map(
         (a, i) => `<button class="w-av${i === 0 ? " sel" : ""}" data-av="${a}">${a}</button>`,
@@ -587,7 +587,7 @@ export function showHome() {
 
   const note = document.createElement("div");
   note.className = "footer-note";
-  note.textContent = "Khel Mela v1.1 · 35 games · A BetterSuite app";
+  note.textContent = "Khel Mela v1.2 · 40 games · A BetterSuite app";
   root.appendChild(note);
   transitionIn();
 }

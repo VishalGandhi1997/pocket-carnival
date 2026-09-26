@@ -12,12 +12,12 @@ LVL badges look lived-in (not zero-state). Hide any dev overlays.
 
 | # | Shot | Setup | Caption overlay (optional) |
 |---|---|---|---|
-| 1 | **Home / hero** | Home scrolled to top: daily bonus unclaimed, Lucky Spin FREE, wallet ~500 | "35 games. One app." |
+| 1 | **Home / hero** | Home scrolled to top: daily bonus unclaimed, Lucky Spin FREE, wallet ~500 | "40 games. One app." |
 | 2 | **Games grid** | Scroll to show the colourful solo grid incl. LVL badges | "Puzzles, arcade & brain games" |
-| 3 | **BlockBazi mid-game** | Board ~half full, a piece mid-drag with green ghost preview | "Clear lines. Level up." |
-| 4 | **Multiplayer** | Carrom Clash mid-aim (slingshot arrow visible) or Chaupar board | "Play together — bots or friends" |
+| 3 | **Blockfit mid-game** | Board ~half full, a piece mid-drag with green ghost preview | "Clear lines. Level up." |
+| 4 | **Multiplayer** | Carrom Clash mid-aim (slingshot arrow visible) or Race Home board | "Play together — bots or friends" |
 | 5 | **Win moment** | Any win overlay with confetti + "Double it" button visible | "Win coins every round" |
-| 6 | **Skill ladder** | Bhul Bhulaiya maze or Chamak pads mid-game, Level ≥3 in HUD | "Games that grow with you" |
+| 6 | **Skill ladder** | Slide Maze or Glow Echo pads mid-game, Level ≥3 in HUD | "Games that grow with you" |
 | 7 | **Skins** | Skins sheet with Blaze equipped on the snake preview | "Unlock skins with coins" |
 | 8 | **Lucky Spin** | Wheel screen, free spin ready | "Free spin every day" |
 

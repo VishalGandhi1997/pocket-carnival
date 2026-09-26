@@ -1,10 +1,12 @@
-// Chaupar Champs — Ludo/Pachisi-style board race (public-domain rules;
+// Race Home — cross-and-circle style board race (public-domain rules;
 // original board art). v1 ships the documented "quick race" variant:
 // 2 tokens per player on a shared ring + private home stretch, instead
-// of full 4-token classic Ludo. 2 players only (bot or pass & play);
+// of the full 4-token classic. 2 players only (bot or pass & play);
 // 4-player support is future work.
+// Bot mode has a persistent level ladder: the bot plays smarter each level
+// (random → capture/lead-token → danger-aware), and beating it levels you up.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
-import { makeTurnBanner, showOverlay } from "../../engine/ui";
+import { makeHud, makeTurnBanner, showOverlay, type Hud } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
 const N = 11; // board grid size
@@ -38,8 +40,20 @@ interface Token {
   pos: number;
 }
 
+// Bot skill tiers by level (bot mode only).
+const botRandomChance = (level: number) => (level <= 1 ? 0.6 : 0); // L1: often picks at random
+const botDangerAware = (level: number) => level >= 4; // L4+: avoids cells you can hit, likes safe cells
+function botSkillLabel(level: number): string {
+  if (level <= 1) return "a casual bot";
+  if (level <= 3) return "bot now hunts captures";
+  return "bot dodges your hits & hugs safe cells";
+}
+
 export function mountChaupar(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | "pnp" }): () => void {
   const mode = opts?.mode ?? "bot";
+  // Level ladder only applies vs the bot; pass & play stays a friendly match.
+  const hud: Hud | null = mode === "bot" ? makeHud(host, ["Level", "Wins"]) : null;
+  let level = mode === "bot" ? sdk.getLevel("chaupar") : 1;
   const banner = makeTurnBanner(host);
   const gc = createGameCanvas(host, 1.0);
   const { ctx } = gc;
@@ -54,6 +68,11 @@ export function mountChaupar(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
   let over = false;
 
   function reset() {
+    if (mode === "bot") {
+      level = sdk.getLevel("chaupar");
+      hud?.set("Level", level);
+      hud?.set("Wins", sdk.getBest("chaupar"));
+    }
     tokens = [[{ pos: 0 }, { pos: 0 }], [{ pos: 0 }, { pos: 0 }]];
     turn = 0;
     rolling = false;
@@ -66,7 +85,7 @@ export function mountChaupar(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
   function refreshBanner(extra = "") {
     if (over) return;
     if (turn === 0) banner.set(`🎲 Your Turn${extra}`, "you");
-    else banner.set((mode === "bot" ? "🤖 Bot's Turn" : "🎲 Player 2's Turn") + extra, "opp");
+    else banner.set((mode === "bot" ? `🤖 Bot (Lv ${level}) is thinking…` : "🎲 Player 2's Turn") + extra, "opp");
   }
 
   function movableTokens(player: 0 | 1, roll: number): number[] {
@@ -110,12 +129,53 @@ export function mountChaupar(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
   }
 
   function chooseBotToken(movable: number[]): number {
-    // prefer a capture, else the token closer to finishing
-    for (const idx of movable) {
-      const dest = tokens[1][idx].pos + dice;
-      if (dest < RING_LEN && capturesAt(1, dest)) return idx;
+    // L1: a lot of the time just pick any movable token
+    if (Math.random() < botRandomChance(level)) return movable[Math.floor(Math.random() * movable.length)];
+    if (!botDangerAware(level)) {
+      // L2-3: prefer a capture, else the token closer to finishing
+      for (const idx of movable) {
+        const dest = tokens[1][idx].pos + dice;
+        if (dest < RING_LEN && capturesAt(1, dest)) return idx;
+      }
+      return movable.reduce((best, i) => (tokens[1][i].pos > tokens[1][best].pos ? i : best), movable[0]);
     }
-    return movable.reduce((best, i) => (tokens[1][i].pos > tokens[1][best].pos ? i : best), movable[0]);
+    // L4+: score each option — captures, finishing, safety, and not landing
+    // within reach (1–6 steps ahead) of one of your tokens.
+    let bestIdx = movable[0];
+    let bestScore = -Infinity;
+    for (const idx of movable) {
+      const from = tokens[1][idx].pos;
+      const dest = from + dice;
+      let score = dest * 0.5; // mild preference for advancing the lead token
+      if (dest >= FINISH) score += 60;
+      else if (dest >= RING_LEN) score += 30; // home stretch can't be hit
+      else {
+        const ringIdx = (ENTRY[1] + dest) % RING_LEN;
+        if (capturesAt(1, dest)) score += 100;
+        if (SAFE_RING_IDX.has(ringIdx)) score += 20;
+        else if (threatenedAt(ringIdx)) score -= 50;
+      }
+      // bonus for rescuing a token that's currently exposed
+      if (from < RING_LEN) {
+        const curIdx = (ENTRY[1] + from) % RING_LEN;
+        if (!SAFE_RING_IDX.has(curIdx) && threatenedAt(curIdx)) score += 15;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = idx;
+      }
+    }
+    return bestIdx;
+  }
+
+  /** Can one of the player's ring tokens land on this ring cell next roll? */
+  function threatenedAt(ringIdx: number): boolean {
+    return tokens[0].some((t) => {
+      if (t.pos >= RING_LEN) return false;
+      const pIdx = (ENTRY[0] + t.pos) % RING_LEN;
+      const dist = (ringIdx - pIdx + RING_LEN) % RING_LEN;
+      return dist >= 1 && dist <= 6 && t.pos + dist < RING_LEN;
+    });
   }
 
   function capturesAt(player: 0 | 1, ringDestPos: number): boolean {
@@ -166,13 +226,30 @@ export function mountChaupar(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" 
   function win(player: 0 | 1) {
     over = true;
     const youWon = player === 0;
-    const coins = youWon ? 35 : 8;
+    const leveledUp = mode === "bot" && youWon;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("chaupar", level);
+    }
+    const coins = sdk.scaleReward(youWon ? 35 : 8, level);
     if (youWon) sdk.submitScore("chaupar", sdk.getBest("chaupar") + 1);
-    sdk.addCoins(coins, "Chaupar Champs");
+    sdk.addCoins(coins, "Race Home");
+    hud?.set("Level", level);
+    hud?.set("Wins", sdk.getBest("chaupar"));
     banner.set(youWon ? "🏆 You Won!" : (mode === "bot" ? "Bot Won" : "Player 2 Won"), youWon ? "you" : "opp");
+    let title = youWon ? "You Won! 🏆" : "You Lost";
+    let subtitle = "Both tokens home";
+    if (leveledUp) {
+      title = "⬆️ Level Up!";
+      subtitle = `Level ${level} — ${botSkillLabel(level)}`;
+    } else if (mode === "bot") {
+      subtitle = `Bot got both tokens home · beat the Lv ${level} bot to reach Level ${level + 1}`;
+    } else if (!youWon) {
+      title = "Player 2 Won";
+    }
     showOverlay(gc.canvas, {
-      title: youWon ? "You Won! 🏆" : "You Lost",
-      subtitle: "Both tokens home",
+      title,
+      subtitle,
       coins,
       mood: youWon ? "win" : "lose",
       primaryLabel: "Play Again",

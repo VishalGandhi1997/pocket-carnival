@@ -1,28 +1,36 @@
-// Tila Match — mahjong-solitaire style triple matcher. Tap FREE tiles
+// Tile Trio — mahjong-solitaire style triple matcher. Tap FREE tiles
 // (nothing overlapping them on a higher layer) to move them into a 7-slot
-// tray; three of a kind pop for +30. Clear the board to win — if the tray
-// fills with no triple, it's game over. 🔀 Shuffle is the free escape hatch.
+// tray; three of a kind pop for +30. Clear the board to level up — if the
+// tray fills with no triple, it's game over. 🔀 Shuffle is the free escape
+// hatch. Higher levels mix in more tile faces and (from L4) a 4th layer.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
-// Emoji pool — 8 faces are drawn per round, 6 copies each: 48 tiles =
-// 16 triples, so every face count is a multiple of 3 and the board is
-// always fully consumable.
-const FACES = ["🛺", "☕", "🏏", "🪁", "🌶️", "🥭", "🐘", "🎡", "💎", "🌸"];
-const TYPES = 8; // distinct faces per round
-const COPIES = 6; // copies per face — a multiple of 3
+// Emoji pool — a globally-recognisable set. Each round draws `typesFor(level)`
+// distinct faces and deals the board in whole triples, so every face count
+// is a multiple of 3 and the board is always fully consumable.
+const FACES = ["🍓", "🚀", "🎸", "🌵", "🐙", "⚽", "🍩", "🦋", "🌙", "🍀", "💎", "🎈", "🍉", "🎲"];
 const TRAY_MAX = 7; // tray slots; 7 tiles with no triple = lose
 
-// Three stacked layers (cols × rows, offsets in tile units). Upper layers
-// sit at half-tile offsets so each pins the tiles beneath. Layer 3 is 3×2
-// (not 2×2) so the total is 30 + 12 + 6 = 48 = TYPES × COPIES — the count
-// must stay divisible by 3 or the board could never fully clear.
-const LAYERS = [
+// ── Level curve ── more distinct faces = fewer early triples = a tighter
+// tray. 7 faces at L1, +1 per level, capped at 12 (L6+).
+const typesFor = (level: number) => Math.min(12, 6 + level);
+const FOURTH_LAYER_FROM = 4; // a 4th layer pins the stack from this level
+
+// Stacked layers (cols × rows, offsets in tile units). Upper layers sit at
+// half-tile offsets so each pins the tiles beneath. Layer 3 is 3×2 (not
+// 2×2) so the base total is 30 + 12 + 6 = 48; the optional 4th layer is a
+// 3×1 strip straddling layer 3's two rows → 51. Both totals are divisible by
+// 3 — they must be, or the board could never fully clear.
+const BASE_LAYERS = [
   { cols: 6, rows: 5, ox: 0, oy: 0 },
   { cols: 4, rows: 3, ox: 1.5, oy: 1 },
   { cols: 3, rows: 2, ox: 1.5, oy: 1.5 },
 ];
+const TOP_LAYER = { cols: 3, rows: 1, ox: 1.5, oy: 2 };
+const layersFor = (level: number) =>
+  level >= FOURTH_LAYER_FROM ? [...BASE_LAYERS, TOP_LAYER] : BASE_LAYERS;
 const LIFT = 7; // cosmetic y-rise per layer for stacked depth
 
 interface Tile {
@@ -39,7 +47,7 @@ interface TrayEntry {
 }
 
 export function mountTilaMatch(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Tiles", "Best"]);
+  const hud = makeHud(host, ["Level", "Tiles", "Best"]);
   const gc = createGameCanvas(host, 1.35);
   const { ctx } = gc;
 
@@ -52,6 +60,8 @@ export function mountTilaMatch(host: HTMLElement, sdk: Sdk): () => void {
   const trayX = Math.round((gc.w - (TRAY_MAX * S + GAP * (TRAY_MAX - 1))) / 2);
   const trayY = gc.h - S - 22;
 
+  let level = sdk.getLevel("tilamatch");
+  let layerCount = layersFor(level).length;
   let tiles: Tile[] = [];
   let tray: TrayEntry[] = [];
   let score = 0;
@@ -67,19 +77,24 @@ export function mountTilaMatch(host: HTMLElement, sdk: Sdk): () => void {
   }
 
   function syncHud() {
+    hud.set("Level", level);
     hud.set("Tiles", tiles.filter((t) => t.alive).length);
     hud.set("Best", sdk.getBest("tilamatch"));
   }
 
-  /** Deal a fresh 48-tile board across the three layers. */
+  /** Deal a fresh board for the current level: every face gets at least one
+   *  triple, the leftover triples go round-robin to a shuffled face order. */
   function reset() {
-    const deck = shuffleArr(
-      shuffleArr([...FACES])
-        .slice(0, TYPES)
-        .flatMap((f) => Array(COPIES).fill(f) as string[]),
-    );
+    level = sdk.getLevel("tilamatch");
+    const layers = layersFor(level);
+    layerCount = layers.length;
+    const total = layers.reduce((n, L) => n + L.cols * L.rows, 0); // 48 or 51
+    const faces = shuffleArr([...FACES]).slice(0, typesFor(level));
+    const faceList: string[] = [];
+    for (let i = 0; i < total / 3; i++) faceList.push(faces[i % faces.length]);
+    const deck = shuffleArr(faceList.flatMap((f) => [f, f, f]));
     tiles = [];
-    LAYERS.forEach((L, layer) => {
+    layers.forEach((L, layer) => {
       for (let r = 0; r < L.rows; r++)
         for (let c = 0; c < L.cols; c++)
           tiles.push({
@@ -111,15 +126,25 @@ export function mountTilaMatch(host: HTMLElement, sdk: Sdk): () => void {
     );
   }
 
+  // Board clear = level up.
   function win() {
     over = true;
     score += 100; // board-clear bonus
     const isBest = sdk.submitScore("tilamatch", score);
-    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 25)), 1);
-    sdk.addCoins(coins, "Tila Match");
+    level += 1;
+    sdk.setLevel("tilamatch", level);
+    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 25)), level);
+    sdk.addCoins(coins, "Tile Trio");
     syncHud();
+    const harder =
+      level === FOURTH_LAYER_FROM
+        ? "a 4th layer of tiles"
+        : typesFor(level) > typesFor(level - 1)
+          ? `${typesFor(level)} tile types to sort`
+          : "bigger coins";
     showOverlay(gc.canvas, {
-      title: "Board Clear! 🀄",
+      title: "⬆️ Level Up!",
+      subtitle: `Board clear! Level ${level} — ${harder}`,
       coins,
       isBest,
       primaryLabel: "Play Again",
@@ -129,9 +154,12 @@ export function mountTilaMatch(host: HTMLElement, sdk: Sdk): () => void {
 
   function lose() {
     over = true;
-    sdk.addCoins(2, "Tila Match"); // consolation coins
+    sdk.submitScore("tilamatch", score);
+    sdk.addCoins(2, "Tile Trio"); // consolation coins
+    const left = tiles.filter((t) => t.alive).length + tray.length;
     showOverlay(gc.canvas, {
       title: "Tray Full! 😵",
+      subtitle: `${left} tiles left · clear the board to reach Level ${level + 1}`,
       coins: 2,
       mood: "lose",
       primaryLabel: "Try Again",
@@ -192,7 +220,8 @@ export function mountTilaMatch(host: HTMLElement, sdk: Sdk): () => void {
     ctx.clearRect(0, 0, gc.w, gc.h);
     roundRect(ctx, 0, 0, gc.w, gc.h, 18, palette.bg);
     // board mat (tall enough to include the lifted upper layers)
-    roundRect(ctx, bx - 10, by - 10 - 2 * LIFT, 6 * T + 20, 5 * T + 20 + 2 * LIFT, 14, palette.board);
+    const lift = (layerCount - 1) * LIFT;
+    roundRect(ctx, bx - 10, by - 10 - lift, 6 * T + 20, 5 * T + 20 + lift, 14, palette.board);
     // tiles, bottom layer first so higher layers paint on top
     for (const t of tiles) if (t.alive) drawTile(t.x, t.y - t.layer * LIFT, T, t.face, isFree(t));
     // tray — slots glow pink when one tap from disaster

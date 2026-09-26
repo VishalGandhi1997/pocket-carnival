@@ -1,16 +1,18 @@
-// Rangoli Logic — a nonogram/picross. Row and column clues give the
-// run-lengths of consecutive petals; deduce and fill every petal to
-// reveal a mirror-symmetric rangoli. Three wrong taps smudge the design.
+// Pixel Logic — a nonogram/picross. Row and column clues give the
+// run-lengths of consecutive filled pixels; deduce and fill every pixel to
+// reveal a mirror-symmetric pixel-art picture. Three wrong taps end the round.
+// Each solved picture levels up to a bigger grid (6×6 → 10×10).
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
-const N = 8; // 8×8 board
 const MAX_MISTAKES = 3;
-const MIN_PETALS = 24; // regenerate sparser designs
+// ── Level curve ── L1 = 6×6, +1 every two levels, capped at 10×10.
+const gridFor = (level: number) => Math.min(10, 6 + Math.floor(level / 2));
+const MIN_FILL = 0.375; // regenerate pictures sparser than this share
 
 export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Done", "Mistakes"]);
+  const hud = makeHud(host, ["Level", "Done", "Mistakes"]);
   const gc = createGameCanvas(host, 1.2);
   const { ctx } = gc;
 
@@ -18,19 +20,28 @@ export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
   const pad = 8;
   const clueW = gc.w * 0.22;
   const clueH = gc.h * 0.22;
-  const cell = Math.min((gc.w - clueW - pad) / N, (gc.h - clueH - pad) / N);
-  const gx0 = clueW + (gc.w - clueW - pad - cell * N) / 2;
-  const gy0 = clueH + (gc.h - clueH - pad - cell * N) / 2;
+  // Grid size + geometry follow the level, recomputed each round.
+  let level = sdk.getLevel("rangoli");
+  let N = gridFor(level);
+  let cell = 0;
+  let gx0 = 0;
+  let gy0 = 0;
+  function layout() {
+    cell = Math.min((gc.w - clueW - pad) / N, (gc.h - clueH - pad) / N);
+    gx0 = clueW + (gc.w - clueW - pad - cell * N) / 2;
+    gy0 = clueH + (gc.h - clueH - pad - cell * N) / 2;
+  }
+  layout();
 
   const makeGrid = (): boolean[][] =>
     Array.from({ length: N }, () => new Array<boolean>(N).fill(false));
 
   let solution: boolean[][] = makeGrid();
-  let filled: boolean[][] = makeGrid(); // correctly placed petals (permanent)
+  let filled: boolean[][] = makeGrid(); // correctly placed pixels (permanent)
   let marked: boolean[][] = makeGrid(); // ✕ notes (player marks + auto-marked misses)
   let rowClues: number[][] = [];
   let colClues: number[][] = [];
-  let totalPetals = 0;
+  let totalPixels = 0;
   let doneCount = 0;
   let mistakes = 0;
   let markMode = false;
@@ -39,11 +50,12 @@ export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
   let flashes: { x: number; y: number; t: number }[] = []; // red mistake flashes
   let revealTimer = 0;
 
-  // Random solution mirrored left-right so the picture reads rangoli-like.
+  // Random solution mirrored left-right so the picture reads like pixel art
+  // (odd sizes get a free centre column).
   function genSolution(): boolean[][] {
     const s = makeGrid();
     for (let y = 0; y < N; y++) {
-      for (let x = 0; x < N / 2; x++) {
+      for (let x = 0; x < Math.ceil(N / 2); x++) {
         const on = Math.random() < 0.5;
         s[y][x] = on;
         s[y][N - 1 - x] = on;
@@ -52,7 +64,7 @@ export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
     return s;
   }
 
-  function countPetals(s: boolean[][]): number {
+  function countPixels(s: boolean[][]): number {
     let n = 0;
     for (const row of s) for (const c of row) if (c) n++;
     return n;
@@ -78,10 +90,14 @@ export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
 
   function reset() {
     window.clearTimeout(revealTimer);
+    level = sdk.getLevel("rangoli");
+    N = gridFor(level);
+    layout();
+    const minPixels = Math.ceil(N * N * MIN_FILL);
     do {
       solution = genSolution();
-      totalPetals = countPetals(solution);
-    } while (totalPetals < MIN_PETALS);
+      totalPixels = countPixels(solution);
+    } while (totalPixels < minPixels);
     filled = makeGrid();
     marked = makeGrid();
     rowClues = solution.map(runsOf);
@@ -92,39 +108,46 @@ export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
     over = false;
     won = false;
     flashes = [];
-    hud.set("Done", `0/${totalPetals}`);
+    hud.set("Level", level);
+    hud.set("Done", `0/${totalPixels}`);
     hud.set("Mistakes", `0/${MAX_MISTAKES}`);
   }
 
   function lose() {
     over = true;
     sdk.submitScore("rangoli", 0);
-    sdk.addCoins(2, "Rangoli Logic");
+    const coins = sdk.scaleReward(2, level);
+    sdk.addCoins(coins, "Pixel Logic");
     showOverlay(gc.canvas, {
-      title: "Smudged! 🥀",
-      coins: 2,
+      title: "Out of Lives! 💔",
+      subtitle: `${doneCount}/${totalPixels} pixels · finish a picture to reach Level ${level + 1}`,
+      coins,
       mood: "lose",
-      primaryLabel: "New Rangoli",
+      primaryLabel: "New Puzzle",
       onPrimary: reset,
     });
   }
 
   function win() {
     over = true;
-    won = true; // switches the board to the coloured rangoli reveal
-    const score = 200 - mistakes * 40;
+    won = true; // switches the board to the coloured picture reveal
+    const score = 200 + (N - 6) * 30 - mistakes * 40;
     const isBest = sdk.submitScore("rangoli", score);
-    const coins = sdk.scaleReward(Math.max(3, Math.floor(score / 20)), 1);
-    sdk.addCoins(coins, "Rangoli Logic");
+    level += 1;
+    sdk.setLevel("rangoli", level);
+    hud.set("Level", level);
+    const coins = sdk.scaleReward(Math.max(3, Math.floor(score / 20)), level);
+    sdk.addCoins(coins, "Pixel Logic");
     sdk.sfx("clear");
+    const next = gridFor(level);
     // Let the reveal breathe for a beat before the results overlay.
     revealTimer = window.setTimeout(() => {
       showOverlay(gc.canvas, {
-        title: "Beautiful! 🪷",
-        subtitle: `${mistakes} mistakes`,
+        title: "⬆️ Level Up!",
+        subtitle: `${mistakes} mistakes · Level ${level} — ${next}×${next} grid${next > N ? " (bigger picture)" : ""}`,
         coins,
         isBest,
-        primaryLabel: "New Rangoli",
+        primaryLabel: "New Puzzle",
         onPrimary: reset,
       });
     }, 700);
@@ -135,7 +158,7 @@ export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
     const x = Math.floor((p.x - gx0) / cell);
     const y = Math.floor((p.y - gy0) / cell);
     if (x < 0 || x >= N || y < 0 || y >= N) return;
-    if (filled[y][x]) return; // placed petals are permanent
+    if (filled[y][x]) return; // placed pixels are permanent
 
     if (markMode) {
       // Free notes: toggle a grey ✕, never penalised.
@@ -148,10 +171,10 @@ export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
     if (solution[y][x]) {
       filled[y][x] = true;
       doneCount++;
-      hud.set("Done", `${doneCount}/${totalPetals}`);
+      hud.set("Done", `${doneCount}/${totalPixels}`);
       sdk.haptic();
       sdk.sfx("pop");
-      if (doneCount === totalPetals) win();
+      if (doneCount === totalPixels) win();
     } else {
       marked[y][x] = true; // auto-mark the miss so it can't be repeated
       mistakes++;
@@ -195,7 +218,7 @@ export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
         const cy = gy0 + y * cell;
         const inset = 1.5;
         if (filled[y][x]) {
-          // On win, alternate petal colours by region for the rangoli reveal.
+          // On win, alternate pixel colours in a checker for the picture reveal.
           const colour = won ? ((x + y) % 2 ? palette.pink : palette.marigold) : palette.pink;
           roundRect(ctx, cx + inset, cy + inset, cell - inset * 2, cell - inset * 2, won ? cell * 0.35 : 5, colour);
         } else {
@@ -210,15 +233,17 @@ export function mountRangoli(host: HTMLElement, sdk: Sdk): () => void {
       }
     }
 
-    // Midline guides make run-counting easier (classic picross aid).
-    if (!won) {
+    // Midline guides make run-counting easier (classic picross aid); odd
+    // grids have no clean midline, so they skip it.
+    if (!won && N % 2 === 0) {
+      const mid = N / 2;
       ctx.strokeStyle = "rgba(255,248,236,0.18)";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(gx0 + 4 * cell, gy0);
-      ctx.lineTo(gx0 + 4 * cell, gy0 + N * cell);
-      ctx.moveTo(gx0, gy0 + 4 * cell);
-      ctx.lineTo(gx0 + N * cell, gy0 + 4 * cell);
+      ctx.moveTo(gx0 + mid * cell, gy0);
+      ctx.lineTo(gx0 + mid * cell, gy0 + N * cell);
+      ctx.moveTo(gx0, gy0 + mid * cell);
+      ctx.lineTo(gx0 + N * cell, gy0 + mid * cell);
       ctx.stroke();
     }
 

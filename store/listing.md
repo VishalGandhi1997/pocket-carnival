@@ -16,37 +16,40 @@ your legal name (individual account); brand shown in copy: **BetterSuite**.
 
 **App name (30 chars max)**
 ```
-Khel Mela: 35 Games in One
+Khel Mela: 40 Games in One
 ```
 *(26 chars)*
 
 **Short description (80 max)**
 ```
-35 casual mini-games in one app — puzzles, board games & arcade. Play free!
+40 casual mini-games in one app — puzzles, board games & arcade. Play free!
 ```
 *(74 chars)*
 
 **Full description (4000 max)**
 ```
-Khel Mela packs 35 fun mini-games into one colourful app — the only game box
+Khel Mela packs 40 fun mini-games into one colourful app — the only game box
 you need. Block puzzles, board classics, arcade action and brain teasers, all
 in one playful carnival world. Jump in as a guest in one tap: no sign-up, no
 clutter — just play.
 
 🧩 PUZZLE & BRAIN
-• BlockBazi — fit blocks, clear rows, columns and 3×3 zones
-• Rang Sort, Do Guna, Tila Match, Jodi Merge, Khol Do!
-• Sudoku Sadhana, Rangoli Logic, Surang, Word Khoj, Shabd Jod, Tukda Tukda
+• Blockfit — fit blocks, clear rows, columns and 3×3 zones
+• Color Pour, Double Up, Tile Trio, Merge Garden, Unbolt, Recall
+• Sudoku Zen, Pixel Logic, Minefield, Word Hunt, Word Ring, Jigsaw Scenes
+• NEW: Pipeline, Switchboard, Paint Flood, Tile Slider
 
 🎲 PLAY TOGETHER (pass & play or vs smart bots)
-• Chaupar Champs — race your tokens home
-• Sanp Sidhi, Char Ki Chaal, Kata Kat, Paddle Panga
-• Carrom Clash, Patta Party, Dimaag Ki Batti quiz battles
+• Race Home — race your tokens home
+• Snakes & Ladders, Four Up, Box Claim, Paddle Duel
+• Carrom Clash, Card Duel, Quiz Duel battles
+• Bots get smarter as you level up
 
 🕹️ ARCADE & SKILL
-• Naagin, Local Dash, Udaan, Toda Phoda, Bubble Bazaar, Tikki Drop
-• Nom City, Chhat Pe Chhat, Gubbara Pop, Nishana, Chamak, Hisab Kitab
-• Chai Empire — build your chai tapri
+• Serpent, Traffic Dash, Skyglide, Brick Smash, Bubble Burst, Peg Drop
+• Nom City, Stack Tower, Balloon Pop, Bullseye, Glow Echo, Math Rush
+• Slide Maze, Pin Strike
+• Café Empire — build your coffee chain
 
 ⭐ WHY YOU'LL KEEP COMING BACK
 • Games get HARDER as you level — and pay MORE coins
@@ -66,17 +69,17 @@ turn every spare minute into playtime!
 ```
 
 **Category:** Games ▸ Casual · **Tags:** casual, puzzle, board, arcade, brain, family
-**Contains ads:** YES · **In-app purchases:** YES (₹79–₹499 range; coin packs + Remove Ads)
+**Contains ads:** YES · **In-app purchases:** YES ($0.99–$5.99 range, localized by the store; coin packs + Remove Ads)
 
 ---
 
 ## Apple App Store
 
-**Name (30 max):** `Khel Mela: 35 Games in One`
+**Name (30 max):** `Khel Mela: 40 Games in One`
 **Subtitle (30 max):** `Puzzles, board & arcade fun` *(27 chars)*
 **Promotional text (170 max):**
 ```
-35 games in one app — puzzles, board classics, arcade and brain teasers. New
+40 games in one app — puzzles, board classics, arcade and brain teasers. New
 skill levels to climb every day. Jump in and play!
 ```
 **Keywords (100 chars, comma-separated, no spaces):**

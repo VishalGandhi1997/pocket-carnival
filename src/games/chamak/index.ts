@@ -1,4 +1,4 @@
-// Chamak — glow-pad memory. Six rangoli petals around a centre diya light
+// Glow Echo — glow-pad memory. Six petal lights around a centre glow light
 // up in a sequence; watch the pattern, then tap it back in the same order.
 // Higher levels start with longer patterns and play them back faster.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
@@ -91,7 +91,7 @@ export function mountChamak(host: HTMLElement, sdk: Sdk): () => void {
     sdk.haptic(60);
     const isBest = sdk.submitScore("chamak", score);
     const coins = sdk.scaleReward(Math.max(1, score), level);
-    sdk.addCoins(coins, "Chamak");
+    sdk.addCoins(coins, "Glow Echo");
     hud.set("Best", sdk.getBest("chamak"));
     showOverlay(gc.canvas, {
       title: leveledUp ? "⬆️ Level Up!" : "Lights Out! 🔆",
@@ -152,7 +152,7 @@ export function mountChamak(host: HTMLElement, sdk: Sdk): () => void {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    // faint outer ring + rangoli dots between the petals
+    // faint outer ring + accent dots between the petals
     ctx.beginPath();
     ctx.arc(cx, cy, ringR + padR + 10, 0, 7);
     ctx.strokeStyle = "rgba(255,248,236,0.08)";
@@ -166,7 +166,7 @@ export function mountChamak(host: HTMLElement, sdk: Sdk): () => void {
       ctx.fill();
     }
 
-    // centre diya — breathing glow that shows the current pattern length
+    // centre light — breathing glow that shows the current pattern length
     const pulse = 1 + Math.sin(time * 2.2) * 0.05;
     const cg = ctx.createRadialGradient(cx, cy, 4, cx, cy, ringR * 0.5);
     cg.addColorStop(0, "rgba(255,159,28,0.45)");

@@ -1,15 +1,22 @@
-// Tikki Drop — carnival ball-drop. Tap a column to drop a tikki; it bounces
+// Peg Drop — carnival ball-drop. Tap a spot to drop a ball; it bounces
 // through the pegs into a prize slot at the bottom. Skill-framed (aim for the
 // gold center slots), NOT casino-styled. You get a limited number of drops.
+// Each level sets a round goal; beat it to level up (fewer drops, more pegs).
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay, showRevive } from "../../engine/ui";
 import { floatText } from "../../engine/fx";
 import { reviveCost } from "../../sdk/economy";
 import type { Sdk } from "../../sdk/platform";
 
-const ROWS = 8; // peg rows
-const DROPS = 10; // drops per round
 const SLOT_POINTS = [5, 10, 20, 50, 100, 50, 20, 10, 5]; // 9 slots, gold in the middle
+
+// ── Level curve ──
+// Drops per round shrink (min 6) and peg rows grow (max 12) every 2 levels.
+const dropsFor = (level: number) => Math.max(6, 10 - Math.floor((level - 1) / 2));
+const rowsFor = (level: number) => Math.min(12, 8 + Math.floor((level - 1) / 2));
+// Goal = 200 + 60/level, capped at 48 points per drop so it always stays
+// reachable (well-aimed drops average ~42–54 points in simulation).
+const targetFor = (level: number) => Math.min(200 + (level - 1) * 60, dropsFor(level) * 48);
 
 interface Ball {
   x: number;
@@ -21,19 +28,23 @@ interface Ball {
 }
 
 export function mountTikkiDrop(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Drops", "Score", "Best"]);
+  const hud = makeHud(host, ["Level", "Goal", "Drops", "Score"]);
   const gc = createGameCanvas(host, 1.3);
   const { ctx, w, h } = gc;
 
-  const pegGap = w / (ROWS + 2);
   const topY = h * 0.16;
   const slotY = h * 0.86;
   const slots = SLOT_POINTS.length;
   const slotW = w / slots;
 
+  let level = sdk.getLevel("tikkidrop");
+  let rows = rowsFor(level);
+  let pegGap = w / (rows + 2);
+  let target = targetFor(level);
+  let dropsPerRound = dropsFor(level);
   let pegs: { x: number; y: number }[] = [];
   let balls: Ball[] = [];
-  let dropsLeft = DROPS;
+  let dropsLeft = dropsPerRound;
   let score = 0;
   let over = false;
   let reviveCount = 0;
@@ -42,26 +53,32 @@ export function mountTikkiDrop(host: HTMLElement, sdk: Sdk): () => void {
 
   function buildPegs() {
     pegs = [];
-    for (let r = 0; r < ROWS; r++) {
-      const count = ROWS + (r % 2 === 0 ? 1 : 0);
+    pegGap = w / (rows + 2);
+    for (let r = 0; r < rows; r++) {
+      const count = rows + (r % 2 === 0 ? 1 : 0);
       const rowW = (count - 1) * pegGap;
       const startX = (w - rowW) / 2;
-      const y = topY + (r / (ROWS - 1)) * (slotY - topY - 40);
+      const y = topY + (r / (rows - 1)) * (slotY - topY - 40);
       for (let c = 0; c < count; c++) pegs.push({ x: startX + c * pegGap, y });
     }
   }
 
   function reset() {
+    level = sdk.getLevel("tikkidrop");
+    rows = rowsFor(level);
+    target = targetFor(level);
+    dropsPerRound = dropsFor(level);
     buildPegs();
     balls = [];
-    dropsLeft = DROPS;
+    dropsLeft = dropsPerRound;
     score = 0;
     over = false;
     reviveCount = 0;
     usedAdRevive = false;
+    hud.set("Level", level);
+    hud.set("Goal", target);
     hud.set("Drops", dropsLeft);
     hud.set("Score", 0);
-    hud.set("Best", sdk.getBest("tikkidrop"));
   }
 
   function drop(x: number) {
@@ -122,14 +139,22 @@ export function mountTikkiDrop(host: HTMLElement, sdk: Sdk): () => void {
   function finishGame() {
     if (!over) return;
     const isBest = sdk.submitScore("tikkidrop", score);
-    const coins = Math.max(1, Math.floor(score / 15));
-    sdk.addCoins(coins, "Tikki Drop");
-    hud.set("Best", sdk.getBest("tikkidrop"));
+    const leveledUp = score >= target;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("tikkidrop", level);
+    }
+    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 15)), level);
+    sdk.addCoins(coins, "Peg Drop");
+    hud.set("Level", level);
     showOverlay(gc.canvas, {
-      title: "Round Over! 🎯",
-      subtitle: `Scored ${score} across ${DROPS} drops`,
+      title: leveledUp ? "⬆️ Level Up!" : "Round Over! 🎯",
+      subtitle: leveledUp
+        ? `Level ${level} — goal ${targetFor(level)} in ${dropsFor(level)} drops, ${rowsFor(level)} peg rows`
+        : `Score ${score} · ${target - score} more for Level ${level + 1}`,
       coins,
       isBest,
+      mood: leveledUp ? "win" : "lose",
       primaryLabel: "Play Again",
       onPrimary: reset,
     });
@@ -207,7 +232,11 @@ export function mountTikkiDrop(host: HTMLElement, sdk: Sdk): () => void {
       ctx.fillStyle = "rgba(255,248,236,0.4)";
       ctx.font = `700 ${w * 0.036}px "Nunito Sans", sans-serif`;
       ctx.textAlign = "center";
-      ctx.fillText("Tap a spot to drop your tikki ↓", w / 2, topY - 34);
+      ctx.fillText(
+        score >= target ? "Goal reached! Keep scoring ↓" : "Tap a spot to drop your ball ↓",
+        w / 2,
+        topY - 34,
+      );
     }
   });
 

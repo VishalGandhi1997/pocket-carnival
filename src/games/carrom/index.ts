@@ -1,7 +1,9 @@
 // Carrom Clash — simplified flick carrom. Slingshot the cream striker from
 // your baseline to knock pucks into the corner pockets: teal pucks score for
 // you, pink for the opponent, the gold queen is +3 to whoever sinks her.
-// Modes: vs Bot (bot shoots from the top) or Pass & Play (view doesn't flip —
+// Modes: vs Bot (bot shoots from the top; it aims tighter, picks smarter
+// targets and judges power better as your persistent level rises — beat it
+// to level up) or Pass & Play (friendly, unleveled; view doesn't flip —
 // Player 2 also shoots from the top baseline).
 import { createGameCanvas, palette, roundRect, type Pointer } from "../../engine/canvas";
 import { makeHud, makeTurnBanner, showOverlay } from "../../engine/ui";
@@ -19,10 +21,20 @@ const REST = 0.8;       // wall restitution: normal component keeps 80% of its s
 const FRICTION = 0.985; // cloth drag per 1/120 s physics sub-step (frame-rate scaled below)
 const STOP_EPS = 6;     // px/s — below this a piece snaps to a full stop
 
+// ── Bot level curve (vs Bot only) ──
+// Aim noise: ±10° at Lv1, 1.2° tighter per level, floor ±1.5° (Lv9+).
+const botNoiseDeg = (level: number) => Math.max(1.5, 10 - (level - 1) * 1.2);
+// From Lv3 the bot plans cut shots: picks the puck + pocket + baseline spot
+// with the straightest line, and aims the ghost-ball contact point.
+const BOT_PLAN_LEVEL = 3;
+// Power spread: 0.7–1.0 of max at Lv1, narrowing by 0.03/level to ±0.025.
+const botPowerSpread = (level: number) => Math.max(0.05, 0.3 - (level - 1) * 0.03);
+
 export function mountCarrom(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | "pnp" }): () => void {
   const mode = opts?.mode ?? "bot";
   const oppLbl = mode === "bot" ? "🤖 Bot" : "🧑 P2";
-  const hud = makeHud(host, ["⚪ You", oppLbl]);
+  const hud = makeHud(host, mode === "bot" ? ["Level", "⚪ You", oppLbl] : ["⚪ You", oppLbl]);
+  let level = mode === "bot" ? sdk.getLevel("carrom") : 1;
   const banner = makeTurnBanner(host);
   const gc = createGameCanvas(host, 1.0); // square board
   const { ctx, w } = gc;
@@ -70,11 +82,12 @@ export function mountCarrom(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
   function updateHud() {
     hud.set("⚪ You", scoreYou);
     hud.set(oppLbl, scoreOpp);
+    if (mode === "bot") hud.set("Level", level);
   }
 
   function refreshBanner() {
     if (turn === 0) banner.set("Your turn — flick the striker!", "you");
-    else banner.set(mode === "bot" ? "🤖 Bot's turn" : "Player 2's turn", "opp");
+    else banner.set(mode === "bot" ? `🤖 Bot (Lv ${level}) is thinking…` : "Player 2's turn", "opp");
   }
 
   // ── Aim & shoot (slingshot: drag back, release to fire the opposite way) ──
@@ -100,25 +113,65 @@ export function mountCarrom(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
     sdk.haptic(25);
   });
 
-  // ── Bot: random baseline spot, aim at nearest own puck (queen 20%), ±8° noise ──
+  // ── Bot: Lv1–2 = random baseline spot, aim at nearest own puck (queen 20%).
+  //    Lv3+ = plan the straightest cut shot to a pocket. Noise/power per level. ──
   function scheduleBot() {
     if (mode === "bot" && turn === 1 && phase === "aim") botTimer = window.setTimeout(botShoot, 700);
   }
+  /** Lv3+: best (straightest) cut shot over baseline spots × targets × pockets.
+   *  Returns the striker x and the ghost-ball aim point, or null if none. */
+  function planShot(): { sx: number; ax: number; ay: number } | null {
+    const sy = baseY(1);
+    let best: { sx: number; ax: number; ay: number; cost: number } | null = null;
+    for (let k = 0; k <= 8; k++) {
+      const sx = xMin + ((xMax - xMin) * k) / 8;
+      for (const c of pieces) {
+        if (!c.alive || (c.kind !== "opp" && c.kind !== "queen")) continue;
+        for (const pt of POCKETS) {
+          const px = pt.x - c.x, py = pt.y - c.y;
+          const pl = Math.hypot(px, py);
+          if (pl === 0) continue;
+          const ux = px / pl, uy = py / pl;             // puck → pocket
+          const ax = c.x - ux * (c.r + sr), ay = c.y - uy * (c.r + sr); // ghost-ball contact point
+          const sxv = ax - sx, syv = ay - sy;
+          const sl = Math.hypot(sxv, syv);
+          if (sl === 0) continue;
+          const cos = (sxv * ux + syv * uy) / sl;       // 1 = dead straight
+          if (cos <= 0.2) continue;                      // cut too thin to pot
+          const cut = Math.acos(Math.min(1, cos));
+          const cost = cut * (c.kind === "queen" ? 0.8 : 1) + pl / (w * 4); // prefer queen & short pots
+          if (!best || cost < best.cost) best = { sx, ax, ay, cost };
+        }
+      }
+    }
+    return best;
+  }
+
   function botShoot() {
     if (phase !== "aim" || turn !== 1) return;
-    striker.x = xMin + Math.random() * (xMax - xMin);
     striker.y = baseY(1);
-    const queen = pieces.find((c) => c.alive && c.kind === "queen");
-    let target: Piece | undefined = queen && Math.random() < 0.2 ? queen : undefined;
-    if (!target)
-      for (const c of pieces) {
-        if (!c.alive || c.kind !== "opp") continue;
-        if (!target || Math.hypot(c.x - striker.x, c.y - striker.y) < Math.hypot(target.x - striker.x, target.y - striker.y)) target = c;
-      }
-    if (!target) target = queen;
-    if (!target) return;
-    const ang = Math.atan2(target.y - striker.y, target.x - striker.x) + ((Math.random() * 16 - 8) * Math.PI) / 180;
-    const sp = MAX_V * (0.7 + Math.random() * 0.3);
+    let aimX: number | undefined, aimY: number | undefined;
+    const plan = level >= BOT_PLAN_LEVEL ? planShot() : null;
+    if (plan) {
+      striker.x = plan.sx;
+      aimX = plan.ax; aimY = plan.ay;
+    } else {
+      striker.x = xMin + Math.random() * (xMax - xMin);
+      const queen = pieces.find((c) => c.alive && c.kind === "queen");
+      let target: Piece | undefined = queen && Math.random() < 0.2 ? queen : undefined;
+      if (!target)
+        for (const c of pieces) {
+          if (!c.alive || c.kind !== "opp") continue;
+          if (!target || Math.hypot(c.x - striker.x, c.y - striker.y) < Math.hypot(target.x - striker.x, target.y - striker.y)) target = c;
+        }
+      if (!target) target = queen;
+      if (target) { aimX = target.x; aimY = target.y; }
+    }
+    if (aimX === undefined || aimY === undefined) return;
+    const noise = botNoiseDeg(level);
+    const ang = Math.atan2(aimY - striker.y, aimX - striker.x) + ((Math.random() * 2 - 1) * noise * Math.PI) / 180;
+    const spread = botPowerSpread(level);
+    const sp = MAX_V * (0.85 - spread / 2 + Math.random() * spread);
     striker.vx = Math.cos(ang) * sp;
     striker.vy = Math.sin(ang) * sp;
     phase = "moving";
@@ -196,13 +249,26 @@ export function mountCarrom(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
   function endGame() {
     phase = "over";
     const youWon = scoreYou > scoreOpp;
-    const coins = youWon ? sdk.scaleReward(30, 1) : 6;
+    const coins = youWon ? sdk.scaleReward(30, level) : sdk.scaleReward(6, level);
     if (youWon) sdk.submitScore("carrom", sdk.getBest("carrom") + 1);
     sdk.addCoins(coins, "Carrom Clash");
+    // Bot mode only: beating the bot climbs the persistent ladder.
+    const leveledUp = mode === "bot" && youWon;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("carrom", level);
+      updateHud();
+    }
     banner.set(youWon ? "🏆 Clash won!" : "Board lost", youWon ? "you" : "opp");
+    let subtitle = `${scoreYou} – ${scoreOpp}`;
+    if (leveledUp)
+      subtitle = `Clash won ${scoreYou} – ${scoreOpp} · Level ${level} — bot aims within ±${botNoiseDeg(level).toFixed(1)}°${
+        level >= BOT_PLAN_LEVEL ? ", plans its cuts" : ""
+      }`;
+    else if (mode === "bot") subtitle = `${scoreYou} – ${scoreOpp} · Beat the Bot (Lv ${level}) to reach Level ${level + 1}`;
     showOverlay(gc.canvas, {
-      title: youWon ? "Clash Won! ⚪" : "Lost the Board",
-      subtitle: `${scoreYou} – ${scoreOpp}`,
+      title: leveledUp ? "⬆️ Level Up!" : youWon ? "Clash Won! ⚪" : "Lost the Board",
+      subtitle,
       coins,
       mood: youWon ? "win" : "lose",
       primaryLabel: "Rematch",
@@ -211,6 +277,7 @@ export function mountCarrom(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
   }
 
   function reset() {
+    if (mode === "bot") level = sdk.getLevel("carrom");
     buildPieces();
     scoreYou = 0; scoreOpp = 0;
     turn = 0; pottedOwn = false; aiming = false; drag = null;
@@ -287,9 +354,7 @@ export function mountCarrom(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" |
     }
   });
 
-  buildPieces();
-  updateHud();
-  refreshBanner();
+  reset();
 
   return () => {
     window.clearTimeout(botTimer);

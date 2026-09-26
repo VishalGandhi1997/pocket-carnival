@@ -1,4 +1,4 @@
-// BlockBazi — grid-fit block puzzle. 9×9 board; clear rows, columns AND
+// Blockfit — grid-fit block puzzle. 9×9 board; clear rows, columns AND
 // 3×3 zones (our sudoku-grid twist on the world's #1 casual format).
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay, showRevive, makeBoosterBar } from "../../engine/ui";
@@ -134,7 +134,7 @@ export function mountBlockBazi(host: HTMLElement, sdk: Sdk): () => void {
       if (board[y].every(Boolean)) for (let x = 0; x < N; x++) clear.push([x, y]);
     for (let x = 0; x < N; x++)
       if (board.every((row) => row[x])) for (let y = 0; y < N; y++) clear.push([x, y]);
-    // 3×3 bonus zones — the BlockBazi twist
+    // 3×3 bonus zones — the Blockfit twist
     for (let by = 0; by < 3; by++)
       for (let bx = 0; bx < 3; bx++) {
         let full = true;
@@ -204,7 +204,7 @@ export function mountBlockBazi(host: HTMLElement, sdk: Sdk): () => void {
       sdk.setLevel("blockbazi", level);
     }
     const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 10)), level);
-    sdk.addCoins(coins, "BlockBazi");
+    sdk.addCoins(coins, "Blockfit");
     hud.set("Best", sdk.getBest("blockbazi"));
     hud.set("Level", level);
     const need = levelUpAt(level);

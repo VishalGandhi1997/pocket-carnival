@@ -1,28 +1,38 @@
 // Nom City — eat & grow. Hold your finger down to steer a hungry hole
-// through a bazaar: anything smaller than you falls in, every bite makes
-// you bigger, and the goal is to devour the whole city before time runs out.
+// through a busy city: anything smaller than you falls in, every bite makes
+// you bigger, and the goal is to hit the level's score target (or devour the
+// whole city) before time runs out.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
-const TIME_LIMIT = 75; // seconds on the clock
 const EAT_ANIM = 0.2; // seconds for the suck-in shrink
+const CLEAN_BONUS = 100; // eat literally everything → bonus
+
+// ── Level curve ── shorter clock, higher target, a busier city each level.
+const roundTime = (level: number) => Math.max(45, 75 - (level - 1) * 4);
+const targetFor = (level: number) => 120 + level * 60;
+const objectCount = (level: number) => Math.min(70, 45 + level * 3);
+// The target never exceeds this share of the points actually on the board,
+// so a high level stays tough but always reachable.
+const TARGET_MAX_SHARE = 0.7;
 
 interface SizeClass {
   emojis: string[];
   rMin: number;
   rMax: number;
   value: number;
-  count: number;
+  count: number; // share at the 45-object baseline; scaled up per level
 }
 
-// ~45 objects total — snacks are plentiful, rickshaws and cows are rare.
+// Snacks are plentiful, taxis, buses and trees are rare.
 const CLASSES: SizeClass[] = [
-  { emojis: ["🍬", "🧁", "🍪", "🥜"], rMin: 8, rMax: 10, value: 1, count: 18 },
-  { emojis: ["🍎", "🥪", "🥤", "🍕"], rMin: 13, rMax: 16, value: 3, count: 14 },
-  { emojis: ["🛵", "🪑", "📦"], rMin: 20, rMax: 24, value: 6, count: 8 },
-  { emojis: ["🛺", "🐄", "🛒"], rMin: 30, rMax: 34, value: 12, count: 5 },
+  { emojis: ["🍬", "🧁", "🍪", "🍩"], rMin: 8, rMax: 10, value: 2, count: 18 },
+  { emojis: ["🍎", "🍔", "🥤", "🍕"], rMin: 13, rMax: 16, value: 6, count: 14 },
+  { emojis: ["🚲", "🛴", "🗑️", "📦"], rMin: 20, rMax: 24, value: 12, count: 8 },
+  { emojis: ["🚕", "🚌", "🌳", "🚗"], rMin: 30, rMax: 34, value: 24, count: 5 },
 ];
+const BASE_COUNT = CLASSES.reduce((s, c) => s + c.count, 0);
 
 interface Obj {
   x: number;
@@ -36,7 +46,7 @@ interface Obj {
 }
 
 export function mountNomCity(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Time", "Score"]);
+  const hud = makeHud(host, ["Level", "Time", "Score", "Goal"]);
   const gc = createGameCanvas(host, 1.0);
   const { ctx } = gc;
 
@@ -45,22 +55,37 @@ export function mountNomCity(host: HTMLElement, sdk: Sdk): () => void {
   let target: { x: number; y: number } | null = null;
   let down = false;
   let score = 0;
-  let timeLeft = TIME_LIMIT;
+  let level = sdk.getLevel("nomcity");
+  let timeLimit = roundTime(level);
+  let goal = targetFor(level);
+  let goalFlash = 0; // seconds left on the "Goal reached!" banner
+  let goalHit = false;
+  let timeLeft = timeLimit;
   let over = false;
   let t = 0; // global clock for glow pulse + wobble
 
   function reset() {
+    level = sdk.getLevel("nomcity");
+    timeLimit = roundTime(level);
     hole.x = gc.w / 2;
     hole.y = gc.h / 2;
     hole.r = gc.w / 22;
     target = null;
     down = false;
     score = 0;
-    timeLeft = TIME_LIMIT;
+    timeLeft = timeLimit;
     over = false;
+    goalHit = false;
+    goalFlash = 0;
     objs = [];
-    for (const c of CLASSES) {
-      for (let i = 0; i < c.count; i++) {
+    const total = objectCount(level);
+    let placed = 0;
+    CLASSES.forEach((c, ci) => {
+      // Scale each class proportionally; the last class absorbs rounding.
+      const n =
+        ci === CLASSES.length - 1 ? total - placed : Math.round((c.count * total) / BASE_COUNT);
+      placed += n;
+      for (let i = 0; i < n; i++) {
         const r = c.rMin + Math.random() * (c.rMax - c.rMin);
         const m = r + 6; // keep the emoji fully on the board
         objs.push({
@@ -69,31 +94,44 @@ export function mountNomCity(host: HTMLElement, sdk: Sdk): () => void {
           r,
           emoji: c.emojis[Math.floor(Math.random() * c.emojis.length)],
           value: c.value,
-          huge: c.value >= 12,
+          huge: c.value >= 24,
           wob: Math.random() * 7,
           eat: -1,
         });
       }
-    }
-    hud.set("Time", TIME_LIMIT);
+    });
+    const boardPoints = objs.reduce((s, o) => s + o.value, 0);
+    goal = Math.min(targetFor(level), Math.floor(boardPoints * TARGET_MAX_SHARE));
+    hud.set("Level", level);
+    hud.set("Time", timeLimit);
     hud.set("Score", 0);
+    hud.set("Goal", goal);
   }
 
   function end(ateEverything: boolean) {
     if (over) return;
     over = true;
     target = null;
-    if (ateEverything) score += 100; // clean-plate bonus
+    if (ateEverything) score += CLEAN_BONUS; // clean-plate bonus
     hud.set("Score", score);
     sdk.haptic(60);
     const isBest = sdk.submitScore("nomcity", score);
-    const coins = sdk.scaleReward(Math.max(2, Math.floor(score / 8)), 1);
+    const leveledUp = score >= goal;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("nomcity", level);
+      hud.set("Level", level);
+    }
+    const coins = sdk.scaleReward(Math.max(2, Math.floor(score / 16)), level);
     sdk.addCoins(coins, "Nom City");
     showOverlay(gc.canvas, {
-      title: ateEverything ? "City Devoured! 🕳️" : "Time's Up! ⏰",
-      subtitle: `Score ${score}`,
+      title: leveledUp ? "⬆️ Level Up!" : ateEverything ? "City Devoured! 🕳️" : "Time's Up! ⏰",
+      subtitle: leveledUp
+        ? `Level ${level} — ${roundTime(level)}s clock, bigger city, higher goal`
+        : `Score ${score} · ${Math.max(0, goal - score)} more for Level ${level + 1}`,
       coins,
       isBest,
+      mood: leveledUp ? "win" : "lose",
       primaryLabel: "Play Again",
       onPrimary: reset,
     });
@@ -151,6 +189,12 @@ export function mountNomCity(host: HTMLElement, sdk: Sdk): () => void {
           sdk.sfx(o.huge ? "clear" : "pop");
         }
       }
+      // first time the level goal is crossed: celebrate, keep playing
+      if (!goalHit && score >= goal) {
+        goalHit = true;
+        goalFlash = 1.6;
+        sdk.sfx("clear");
+      }
       // advance swallow animations (pulled toward the moving hole), drop finished
       for (const o of objs) {
         if (o.eat >= 0) {
@@ -167,7 +211,7 @@ export function mountNomCity(host: HTMLElement, sdk: Sdk): () => void {
     // ── draw ──
     ctx.clearRect(0, 0, gc.w, gc.h);
     roundRect(ctx, 0, 0, gc.w, gc.h, 18, palette.bg);
-    // faint bazaar-floor tiles
+    // faint city-block pavement tiles
     const tile = gc.w / 10;
     for (let ty = 0; ty < 10; ty++)
       for (let tx = 0; tx < 10; tx++)
@@ -204,6 +248,21 @@ export function mountNomCity(host: HTMLElement, sdk: Sdk): () => void {
     // 4) objects still too big sit on top — the hole slides underneath them
     for (const o of objs)
       if (o.eat < 0 && o.r >= hole.r) drawEmoji(o.emoji, o.x, o.y + Math.sin(t * 2 + o.wob) * 1.5, o.r);
+
+    // 5) brief "goal reached" banner
+    if (goalFlash > 0) {
+      goalFlash -= dt;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, goalFlash * 2);
+      ctx.font = `bold ${Math.round(gc.w * 0.07)}px system-ui`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = palette.cream;
+      ctx.shadowColor = "#000";
+      ctx.shadowBlur = 8;
+      ctx.fillText("🎯 Goal reached!", gc.w / 2, gc.h * 0.12);
+      ctx.restore();
+    }
   });
 
   reset();

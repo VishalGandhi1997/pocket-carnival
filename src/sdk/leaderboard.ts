@@ -13,16 +13,16 @@ export interface LeaderRow {
 
 // Seeded rival names so the ladder feels alive and is stable within a session.
 const RIVALS = [
-  { name: "Ananya", avatar: "🦊" },
-  { name: "Rohan", avatar: "🐯" },
-  { name: "Priya", avatar: "🦄" },
-  { name: "Arjun", avatar: "🦁" },
-  { name: "Meera", avatar: "🐼" },
-  { name: "Kabir", avatar: "🐵" },
-  { name: "Diya", avatar: "🦉" },
-  { name: "Vikram", avatar: "🐸" },
-  { name: "Sara", avatar: "🐧" },
-  { name: "Aditya", avatar: "🐙" },
+  { name: "Mia", avatar: "🦊" },
+  { name: "Leo", avatar: "🐯" },
+  { name: "Sofia", avatar: "🦄" },
+  { name: "Lucas", avatar: "🦁" },
+  { name: "Emma", avatar: "🐼" },
+  { name: "Noah", avatar: "🐵" },
+  { name: "Yuki", avatar: "🦉" },
+  { name: "Mateo", avatar: "🐸" },
+  { name: "Zara", avatar: "🐧" },
+  { name: "Oliver", avatar: "🐙" },
 ];
 
 // Deterministic pseudo-random from a string seed (stable per game+week).

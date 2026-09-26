@@ -1,6 +1,6 @@
-// Hisab Kitab — rapid mental-math rush. A sum flashes up big on the canvas,
+// Math Rush — rapid mental-math rush. A sum flashes up big on the canvas,
 // four answers wait below; tap the right one before the time bar drains.
-// Streaks pay a growing bonus, and three misses close the ledger.
+// Streaks pay a growing bonus, and three misses end the run.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
@@ -40,7 +40,7 @@ function distractors(ans: number): number[] {
 
 /** Question generator — the pool of shapes widens as the level climbs. */
 function makeQuestion(level: number): Question {
-  const hi = 20 + level * 10;
+  const hi = 20 + Math.min(level, 12) * 10; // operand range caps at 140
   const gens: (() => { text: string; answer: number })[] = [
     () => { const a = ri(2, hi), b = ri(2, hi); return { text: `${a} + ${b}`, answer: a + b }; },
     () => {
@@ -155,10 +155,10 @@ export function mountHisab(host: HTMLElement, sdk: Sdk): () => void {
     over = true;
     const isBest = sdk.submitScore("hisab", score);
     const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 12)), level);
-    sdk.addCoins(coins, "Hisab Kitab");
+    sdk.addCoins(coins, "Math Rush");
     const need = levelUpAt(level);
     showOverlay(gc.canvas, {
-      title: leveledUp ? "⬆️ Level Up!" : "Hisab Barabar! 🧮",
+      title: leveledUp ? "⬆️ Level Up!" : "Out of Lives! 🧮",
       subtitle: leveledUp
         ? `Score ${score} — now Level ${level}: tougher sums, faster clock`
         : `Score ${score} · ${need - score} more to reach Level ${level + 1}`,

@@ -1,5 +1,7 @@
-// Rang Sort — color sort puzzle. Tap a tin to lift its top color, tap
-// another to pour. Fill every tin with a single color to win the level.
+// Color Pour — color sort puzzle. Tap a tube to lift its top color, tap
+// another to pour. Fill every tube with a single color to clear the level.
+// Level ladder: more colors every 2 levels (3 → 7, capped at Level 9+), with
+// 2 spare empty tubes always. Solving a board = Level Up.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay, makeBoosterBar } from "../../engine/ui";
 import { ECONOMY } from "../../sdk/economy";
@@ -12,7 +14,11 @@ export function mountRangSort(host: HTMLElement, sdk: Sdk): () => void {
   const gc = createGameCanvas(host, 1.3);
   const { ctx } = gc;
 
-  let level = Math.max(1, sdk.getBest("rangsort"));
+  // Historically the level lived in the best-score slot (submitScore with the
+  // next level), so read both and take the higher to keep old saves intact.
+  const readLevel = () =>
+    Math.max(1, sdk.getLevel("rangsort"), sdk.getBest("rangsort"));
+  let level = readLevel();
   let tubes: string[][] = [];
   let selected = -1;
   let moves = 0;
@@ -24,6 +30,7 @@ export function mountRangSort(host: HTMLElement, sdk: Sdk): () => void {
   }
 
   function deal() {
+    level = readLevel();
     const nc = colorCount(level);
     const colors = palette.pieces.slice(0, nc);
     // Deal from a solved state backwards-ish: shuffle all units randomly.
@@ -81,15 +88,24 @@ export function mountRangSort(host: HTMLElement, sdk: Sdk): () => void {
 
   function win() {
     solved = true;
-    const coins = 5 + colorCount(level) * 2;
-    sdk.addCoins(coins, "Rang Sort");
+    const prevColors = colorCount(level);
+    const coins = sdk.scaleReward(5 + prevColors * 2, level);
+    sdk.addCoins(coins, "Color Pour");
+    const cleared = level;
     level++;
+    sdk.setLevel("rangsort", level);
     sdk.submitScore("rangsort", level);
+    hud.set("Level", level);
+    const nextColors = colorCount(level);
     showOverlay(gc.canvas, {
-      title: "Sorted! 🌈",
-      subtitle: `Level ${level - 1} done in ${moves} moves`,
+      title: "⬆️ Level Up!",
+      subtitle:
+        nextColors > prevColors
+          ? `Level ${cleared} cleared in ${moves} moves · Level ${level} — ${nextColors} colors to sort`
+          : `Level ${cleared} cleared in ${moves} moves · Level ${level} — ${nextColors} colors, bigger coins`,
       coins,
-      primaryLabel: `Level ${level} ›`,
+      mood: "win",
+      primaryLabel: `Play Level ${level} ›`,
       onPrimary: deal,
     });
   }
@@ -130,6 +146,12 @@ export function mountRangSort(host: HTMLElement, sdk: Sdk): () => void {
         roundRect(ctx, x + 4, y + lift + raise + th - 4 - (j + 1) * unit + 2, tw - 8, unit - 4, 6, c);
       });
     });
+    // Level caption along the bottom edge (tubes never reach this far down).
+    ctx.fillStyle = "rgba(255,248,236,0.75)";
+    ctx.font = `800 18px "Baloo 2", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`Level ${level} · ${colorCount(level)} colors`, gc.w / 2, gc.h - 22);
   });
 
   // controls

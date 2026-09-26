@@ -1,4 +1,4 @@
-// Khol Do! — unscrew-the-plates dependency puzzle. Stacked plates are each
+// Unbolt — unscrew-the-plates dependency puzzle. Stacked plates are each
 // held by 2-3 bolts; a bolt unscrews only while NO higher plate covers it,
 // so the pile must come apart top-down. A plate with no bolts left drops
 // away, uncovering what it pinned. Clear every plate to finish the level.
@@ -134,13 +134,15 @@ export function mountKholDo(host: HTMLElement, sdk: Sdk): () => void {
     const score = plateCount * 30;
     const isBest = sdk.submitScore("kholdo", score);
     const coins = sdk.scaleReward(6 + plateCount * 2, level);
-    sdk.addCoins(coins, "Khol Do!");
+    sdk.addCoins(coins, "Unbolt");
     hud.set("Level", level);
+    const nextPlates = Math.min(3 + level, 8);
     showOverlay(gc.canvas, {
-      title: "Dismantled! 🔩",
-      subtitle: `Level ${level - 1} done · ${moves} moves`,
+      title: "⬆️ Level Up!",
+      subtitle: `Cleared in ${moves} moves · Level ${level} — ${nextPlates} plates${nextPlates > plateCount ? ", deeper stack" : ""}`,
       coins,
       isBest,
+      mood: "win",
       primaryLabel: `Level ${level} ›`,
       onPrimary: reset,
     });

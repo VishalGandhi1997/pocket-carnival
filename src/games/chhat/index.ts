@@ -1,4 +1,4 @@
-// Chhat Pe Chhat — the classic "Stack" tower builder. A block slides back and
+// Stack Tower — the classic "Stack" tower builder. A block slides back and
 // forth at the top of the tower; TAP to drop it. Whatever overhangs the block
 // below is sliced off (and falls away as debris), so the tower narrows with
 // every imperfect placement. Miss the tower entirely and it topples.
@@ -24,13 +24,22 @@ interface Debris {
 const PERFECT_PX = 6; // near-exact placements snap + reward a little width back
 const PERFECT_GROW = 6; // px of width handed back on a perfect stack
 
+// Progressive difficulty: each level starts with a narrower block (−5%/level,
+// capped at −35%) and a faster base slide (+8%/level, capped at +70%).
+// Level up when a run's tower reaches 10 + level×4.
+const widthFactor = (level: number) => 1 - Math.min(0.35, (level - 1) * 0.05);
+const speedFactor = (level: number) => 1 + Math.min(0.7, (level - 1) * 0.08);
+const levelUpAt = (level: number) => 10 + level * 4;
+
 export function mountChhat(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Height", "Best"]);
+  const hud = makeHud(host, ["Level", "Height", "Best"]);
+  let level = sdk.getLevel("chhat");
   const gc = createGameCanvas(host, 1.5); // portrait
   const { ctx } = gc;
 
   const blockH = Math.round(gc.h / 12); // ~10 blocks visible at once
-  const baseW = Math.round(gc.w * 0.55);
+  const fullW = Math.round(gc.w * 0.55); // level-1 starting width
+  let baseW = fullW; // this run's starting (and max) width, set per level
 
   let tower: Block[] = [];
   let debris: Debris[] = [];
@@ -57,13 +66,16 @@ export function mountChhat(host: HTMLElement, sdk: Sdk): () => void {
   }
 
   function reset() {
+    level = sdk.getLevel("chhat");
+    baseW = Math.round(fullW * widthFactor(level));
     tower = [{ x: (gc.w - baseW) / 2, w: baseW, ci: 0 }];
     debris = [];
     score = 0;
-    speed = gc.w * 0.8; // px/sec, grows with each stack
+    speed = gc.w * 0.8 * speedFactor(level); // px/sec, grows with each stack
     over = false;
     spawnMoving();
     camY = camTarget(); // snap camera on a fresh run
+    hud.set("Level", level);
     hud.set("Height", 0);
     hud.set("Best", sdk.getBest("chhat"));
   }
@@ -112,15 +124,24 @@ export function mountChhat(host: HTMLElement, sdk: Sdk): () => void {
     over = true;
     sdk.haptic(60);
     const isBest = sdk.submitScore("chhat", score);
-    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 3)), 1);
-    sdk.addCoins(coins, "Chhat Pe Chhat");
+    const leveledUp = score >= levelUpAt(level);
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("chhat", level);
+    }
+    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 3)), level);
+    sdk.addCoins(coins, "Stack Tower");
     hud.set("Best", sdk.getBest("chhat"));
+    hud.set("Level", level);
+    const need = levelUpAt(level);
     showOverlay(gc.canvas, {
-      title: "Toppled! 🏗️",
-      subtitle: `Stacked ${score}`,
+      title: leveledUp ? "⬆️ Level Up!" : "Toppled! 🏗️",
+      subtitle: leveledUp
+        ? `Level ${level} — narrower blocks, faster slide`
+        : `Stacked ${score} · ${Math.max(0, need - score)} more for Level ${level + 1}`,
       coins,
       isBest,
-      mood: "lose",
+      mood: leveledUp ? "win" : "lose",
       primaryLabel: "Play Again",
       onPrimary: reset,
     });

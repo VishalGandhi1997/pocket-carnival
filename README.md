@@ -1,6 +1,6 @@
 # Khel Mela — Master Casual Gaming App
 
-One app, 30 original mini-games. See [GAME-DISCOVERY-EXECUTION-PLAN.md](GAME-DISCOVERY-EXECUTION-PLAN.md) for the research-backed strategy and [GAMES-LIST.md](GAMES-LIST.md) for the full roster.
+One app, 40 original mini-games. See [GAME-DISCOVERY-EXECUTION-PLAN.md](GAME-DISCOVERY-EXECUTION-PLAN.md) for the research-backed strategy and [GAMES-LIST.md](GAMES-LIST.md) for the full roster.
 
 ## Run it
 
@@ -15,14 +15,14 @@ npm run build    # production build (dist/)
 ```
 src/
   main.ts             entry point
-  style.css           design system ("modern mela": indigo/marigold/cream)
+  style.css           design system ("cosmic carnival" theme)
   shell/app.ts        home screen, game screen, navigation, wallet header
   sdk/platform.ts     the ONE bridge games talk to: coins, best scores,
                       haptics, toasts (localStorage now → Firebase/native later)
   engine/canvas.ts    shared canvas harness: DPI sizing, rAF loop,
                       pointer + swipe input, brand palette, cleanup
   engine/ui.ts        shared HUD + standard win/lose overlay
-  games/registry.ts   all 30 games; playable ones have a `mount`
+  games/registry.ts   all 40 games, each with a `mount` + `howTo`
   games/<id>/index.ts one self-contained module per game
 ```
 
@@ -48,7 +48,7 @@ Same as above, plus:
 3. `"bot"` mode: after the human's move, `setTimeout` your AI's move (see `charchaal`/`katakat`
    for simple heuristics, `chaupar`/`sanpsidhi` for dice-based bots).
 4. `"pnp"` mode: both players act on the same device. Board games alternate taps on one
-   canvas; only Paddle Panga needs true simultaneous multi-touch (bypasses the engine's
+   canvas; only Paddle Duel needs true simultaneous multi-touch (bypasses the engine's
    single-pointer helpers — see its `localPoint` usage for the pattern).
 5. Always add a `howTo` array — the shell auto-shows it on first visit and offers a
    permanent "❓" button in the topbar to reopen it.

@@ -58,7 +58,7 @@ domain is **DONE** (marked ✅). What remains is the OWNER ACTIONS list at the e
 
 ### Quality gate
 - ✅ Strict TypeScript + production build pass clean (see repo CI-able scripts).
-- ✅ Stale text fixed everywhere ("30 games" → 35 in app title, manifest,
+- ✅ Stale text fixed everywhere (game count → 40 in app title, manifest,
   welcome screen, footer); manifest phantom PNG icons removed earlier.
 - ✅ Placeholder/dead-link sweep: no `khelmela.app` emails, no old bundle id,
   no StockGro identifiers anywhere in the repo or git history metadata

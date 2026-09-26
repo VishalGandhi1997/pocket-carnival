@@ -1,16 +1,23 @@
-// Bubble Bazaar — classic bubble shooter on a hex-offset grid. Drag to aim,
+// Bubble Burst — classic bubble shooter on a hex-offset grid. Drag to aim,
 // release to fire. Land 3+ of the same colour to pop them; bubbles left
 // hanging without a path to the ceiling drop for bonus points. A fresh row
-// of stock presses down every 6 shots — the bazaar closes when it reaches
+// of bubbles presses down every few shots — the run ends when they reach
 // the shooter.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
 const COLS = 9; // bubbles in a non-offset row (offset rows fit 8)
-const START_ROWS = 5;
-const N_COLORS = 5; // palette.pieces[0..4]
-const LOSE_ROW = 12, SHOTS_PER_ROW = 6, POP_T = 0.3; // lose depth · row cadence · pop-ring life (s)
+const MAX_COLORS = 6; // palette.pieces[0..5]
+const LOSE_ROW = 12, POP_T = 0.3; // lose depth · pop-ring life (s)
+
+// Progressive difficulty (persistent level). L1: 4 colours, 5 starting rows,
+// a new row every 7 shots. Each level adds colours / rows / faster pressure,
+// all capped. Level up when a run scores ≥ 300 + level×150.
+const colorsFor = (level: number) => Math.min(MAX_COLORS, 3 + level);
+const shotsPerRowFor = (level: number) => Math.max(3, 7 - Math.floor(level / 2));
+const startRowsFor = (level: number) => Math.min(8, 5 + Math.floor((level - 1) / 2));
+const levelUpAt = (level: number) => 300 + level * 150;
 const AIM_MIN = Math.PI / 12, AIM_MAX = Math.PI - Math.PI / 12; // aim clamp: 15°–165°
 
 type Cell = number | null; // colour index, or empty
@@ -18,14 +25,16 @@ type Cell = number | null; // colour index, or empty
 interface Fx { x: number; y: number; vy: number; color: number; t: number; drop: boolean }
 
 export function mountBubble(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Score", "Best"]);
+  const hud = makeHud(host, ["Level", "Score", "Best"]);
+  let level = sdk.getLevel("bubble");
+  let nColors = colorsFor(level), shotsPerRow = shotsPerRowFor(level);
   const gc = createGameCanvas(host, 1.4);
   const { ctx, w, h } = gc;
 
   const R = w / 18; // bubble radius: 9 diameters span the width exactly
   const ROW_H = R * Math.sqrt(3); // vertical pitch of hex packing
   const TOP = R + 4; // y of row-0 centres
-  const COLORS = palette.pieces.slice(0, N_COLORS);
+  const COLORS = palette.pieces.slice(0, MAX_COLORS);
   const SPEED = w * 2.4; // shot speed (px/s)
   const shooter = { x: w / 2, y: h - R * 2 };
 
@@ -53,24 +62,28 @@ export function mountBubble(host: HTMLElement, sdk: Sdk): () => void {
   }
 
   function makeRow(r: number, filled: boolean): Cell[] {
-    return Array.from({ length: colsIn(r) }, () => (filled ? Math.floor(Math.random() * N_COLORS) : null));
+    return Array.from({ length: colsIn(r) }, () => (filled ? Math.floor(Math.random() * nColors) : null));
   }
 
   /** Launcher only deals colours still on the board (any colour if cleared). */
   function rollColor(): number {
     const seen = new Set<number>();
     for (const row of grid) for (const v of row) if (v !== null) seen.add(v);
-    const pool = seen.size ? [...seen] : COLORS.map((_, i) => i);
+    const pool = seen.size ? [...seen] : Array.from({ length: nColors }, (_, i) => i);
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
   function reset() {
+    level = sdk.getLevel("bubble");
+    nColors = colorsFor(level);
+    shotsPerRow = shotsPerRowFor(level);
     offsetBase = 0;
     grid = [];
-    for (let r = 0; r < START_ROWS; r++) grid.push(makeRow(r, true));
+    for (let r = 0; r < startRowsFor(level); r++) grid.push(makeRow(r, true));
     score = 0; shots = 0; over = false; shot = null; fx = [];
     aim = Math.PI / 2;
     cur = rollColor(); next = rollColor();
+    hud.set("Level", level);
     hud.set("Score", 0);
     hud.set("Best", sdk.getBest("bubble"));
   }
@@ -143,18 +156,27 @@ export function mountBubble(host: HTMLElement, sdk: Sdk): () => void {
     over = true;
     shot = null;
     const isBest = sdk.submitScore("bubble", score);
-    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 20)), 1);
-    sdk.addCoins(coins, "Bubble Bazaar");
+    const leveledUp = score >= levelUpAt(level);
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("bubble", level);
+    }
+    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 20)), level);
+    sdk.addCoins(coins, "Bubble Burst");
     hud.set("Best", sdk.getBest("bubble"));
+    hud.set("Level", level);
+    const need = levelUpAt(level);
     showOverlay(gc.canvas, {
-      title: "Bazaar Closed! 🫧",
-      subtitle: `Score ${score}`,
-      coins, isBest, mood: "lose",
+      title: leveledUp ? "⬆️ Level Up!" : "Out of Room! 🫧",
+      subtitle: leveledUp
+        ? `Level ${level} — more colours, rows drop faster`
+        : `Score ${score} · ${Math.max(0, need - score)} more for Level ${level + 1}`,
+      coins, isBest, mood: leveledUp ? "win" : "lose",
       primaryLabel: "Play Again", onPrimary: reset,
     });
   }
 
-  /** Glue the landed shot into the grid, then pop / drop / press new stock. */
+  /** Glue the landed shot into the grid, then pop / drop / press a new row. */
   function settle(x: number, y: number, color: number) {
     const [r, c] = snap(x, y);
     grid[r][c] = color;
@@ -171,7 +193,7 @@ export function mountBubble(host: HTMLElement, sdk: Sdk): () => void {
     } else {
       sdk.haptic();
     }
-    if (shots % SHOTS_PER_ROW === 0) addRow(); // every 6th shot presses stock down
+    if (shots % shotsPerRow === 0) addRow(); // every Nth shot (by level) presses a row down
     trim();
     if (grid.length - 1 >= LOSE_ROW) endGame();
   }
@@ -242,7 +264,7 @@ export function mountBubble(host: HTMLElement, sdk: Sdk): () => void {
     ctx.clearRect(0, 0, w, h);
     roundRect(ctx, 0, 0, w, h, 18, palette.bg);
 
-    // danger line: stock crossing it closes the bazaar
+    // danger line: bubbles crossing it end the run
     const dangerY = cellY(LOSE_ROW) - R;
     ctx.setLineDash([6, 8]); ctx.strokeStyle = "rgba(239,71,111,0.45)";
     ctx.beginPath(); ctx.moveTo(8, dangerY); ctx.lineTo(w - 8, dangerY); ctx.stroke();

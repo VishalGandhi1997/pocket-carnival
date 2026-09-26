@@ -1,12 +1,18 @@
-// Surang — Minesweeper. Tap to reveal a cell; a 0 flood-fills its region.
+// Minefield — Minesweeper. Tap to reveal a cell; a 0 flood-fills its region.
 // Hit a mine and it's over. Toggle Flag mode to mark suspected mines.
-// Clear every safe cell — faster clears score higher.
+// Clear every safe cell to level up — faster clears score higher. Each level
+// grows the grid and packs the mines tighter.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
-const N = 9; // 9×9 grid
-const MINES = 10; // mines placed after the first reveal
+// ── Level curve ── square grid grows by 1 every 2 levels (8×8 → 12×12) and
+// mine density climbs 1.2%/level (12% → 20% cap).
+const gridFor = (level: number) => Math.min(12, 8 + Math.floor((level - 1) / 2));
+const minesFor = (level: number) => {
+  const n = gridFor(level);
+  return Math.round(n * n * Math.min(0.2, 0.12 + (level - 1) * 0.012));
+};
 
 // Classic per-number colours so counts are readable at a glance.
 const NUM_COLORS = ["", "#4cc9f0", "#06d6a0", "#ef476f", "#c77dff", "#ff9f1c", "#4cc9f0", "#fff8ec", "#ffd166"];
@@ -19,10 +25,13 @@ interface Cell {
 }
 
 export function mountSurang(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Mines", "Time"]);
+  const hud = makeHud(host, ["Level", "Mines", "Time"]);
   const gc = createGameCanvas(host, 1.0);
   const { ctx } = gc;
 
+  let level = sdk.getLevel("surang");
+  let N = gridFor(level); // grid is N×N
+  let MINES = minesFor(level); // mines placed after the first reveal
   let grid: Cell[][] = [];
   let firstTap = true; // mines are generated on the first reveal
   let flagMode = false;
@@ -35,6 +44,9 @@ export function mountSurang(host: HTMLElement, sdk: Sdk): () => void {
   const cellSize = () => (gc.w - pad * 2) / N;
 
   function reset() {
+    level = sdk.getLevel("surang");
+    N = gridFor(level);
+    MINES = minesFor(level);
     grid = [];
     for (let y = 0; y < N; y++) {
       const row: Cell[] = [];
@@ -46,17 +58,20 @@ export function mountSurang(host: HTMLElement, sdk: Sdk): () => void {
     elapsed = 0;
     elapsedRaw = 0;
     over = false;
+    hud.set("Level", level);
     hud.set("Mines", MINES);
     hud.set("Time", 0);
   }
 
-  // Place mines anywhere except the first-tapped cell, then compute counts.
+  // Place mines anywhere except the first-tapped cell and its neighbours
+  // (so the first tap always opens a region), then compute counts. The
+  // 3×3 safe zone always leaves room: 20% of 8×8 is well under 64 − 9.
   function placeMines(safeX: number, safeY: number) {
     let placed = 0;
     while (placed < MINES) {
       const x = Math.floor(Math.random() * N);
       const y = Math.floor(Math.random() * N);
-      if (grid[y][x].mine || (x === safeX && y === safeY)) continue;
+      if (grid[y][x].mine || (Math.abs(x - safeX) <= 1 && Math.abs(y - safeY) <= 1)) continue;
       grid[y][x].mine = true;
       placed++;
     }
@@ -115,10 +130,13 @@ export function mountSurang(host: HTMLElement, sdk: Sdk): () => void {
     sdk.haptic(60);
     sdk.submitScore("surang", 0);
     const coins = 2;
-    sdk.addCoins(coins, "Surang");
+    sdk.addCoins(coins, "Minefield");
+    let safeLeft = 0;
+    for (let y = 0; y < N; y++)
+      for (let x = 0; x < N; x++) if (!grid[y][x].mine && !grid[y][x].revealed) safeLeft++;
     showOverlay(gc.canvas, {
       title: "Boom! 💥",
-      subtitle: `You lasted ${elapsed}s`,
+      subtitle: `You lasted ${elapsed}s · ${safeLeft} safe cells left — clear them all to reach Level ${level + 1}`,
       coins,
       mood: "lose",
       primaryLabel: "Play Again",
@@ -129,13 +147,18 @@ export function mountSurang(host: HTMLElement, sdk: Sdk): () => void {
   function win() {
     over = true;
     sdk.sfx("clear");
-    const score = Math.max(1, 300 - elapsed); // faster clear = higher score
+    // Faster clear = higher score; bigger boards get a larger time budget.
+    const score = Math.max(10, 300 + (level - 1) * 40 - elapsed);
     const isBest = sdk.submitScore("surang", score);
-    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 20)), 1);
-    sdk.addCoins(coins, "Surang");
+    level += 1;
+    sdk.setLevel("surang", level);
+    hud.set("Level", level);
+    const coins = sdk.scaleReward(Math.max(1, Math.floor(score / 20)), level);
+    sdk.addCoins(coins, "Minefield");
+    const n = gridFor(level);
     showOverlay(gc.canvas, {
-      title: "Cleared! 💣",
-      subtitle: `Time ${elapsed}s`,
+      title: "⬆️ Level Up!",
+      subtitle: `Cleared in ${elapsed}s · Level ${level} — ${n}×${n} grid, ${minesFor(level)} mines`,
       coins,
       isBest,
       primaryLabel: "Play Again",

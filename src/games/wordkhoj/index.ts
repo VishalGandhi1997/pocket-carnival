@@ -1,24 +1,34 @@
-// Word Khoj — word search. Press a letter and drag a straight line (row,
-// column, or 45° diagonal) to circle a hidden word. Words read forward or
-// backward. Find all six — faster hunts score higher.
+// Word Hunt — word search. Press a letter and drag a straight line (row,
+// column, or 45° diagonal) to circle a hidden word (drag either way). Find
+// them all to level up — bigger grids, more words and, from Level 3, words
+// hidden backwards too. Faster hunts score higher.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
-const N = 9; // 9×9 letter grid
-const WORDS_PER_ROUND = 6;
+// ── Level curve ── grid grows every 2 levels, one more word every 2 levels.
+const gridFor = (level: number) => Math.min(12, 8 + Math.floor((level - 1) / 2));
+const wordsFor = (level: number) => Math.min(10, 5 + Math.floor(level / 2));
+const BACKWARDS_FROM = 3; // level at which words may also run backwards
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-// Original pool of simple words (4-7 letters); 6 are hidden each round.
+// Pool of simple, globally familiar English words (4-7 letters, so every
+// word fits the smallest 8×8 grid).
 const POOL = [
-  "MANGO", "CRICKET", "BAZAAR", "KITE", "TIGER", "LOTUS",
-  "CHAI", "TRAIN", "RIVER", "TEMPLE", "PEACOCK", "JUNGLE",
-  "MASALA", "SITAR", "LADDU", "DIWALI", "HENNA", "COBRA",
-  "SPICE", "CAMEL", "PALACE", "GARDEN", "MONSOON", "BANYAN",
+  "PLANET", "GUITAR", "OCEAN", "TIGER", "CASTLE", "ROCKET",
+  "KITE", "TRAIN", "RIVER", "FOREST", "DOLPHIN", "JUNGLE",
+  "PIANO", "CLOUD", "ISLAND", "BRIDGE", "COBRA", "APPLE",
+  "CAMEL", "PALACE", "GARDEN", "RAINBOW", "WINTER", "PENGUIN",
+  "SUMMER", "DRAGON", "MOON", "STAR", "ZEBRA", "LEMON",
+  "CANDLE", "ROBOT", "PIRATE", "VIOLIN", "DESERT", "WHALE",
 ];
 
-// Placement directions: right, down, diag-down-right, diag-up-right.
-const DIRS: [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
+// Placement directions: right, down, diag-down-right, diag-up-right…
+const FORWARD_DIRS: [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
+// …plus their reverses (left, up, up-left, down-left) from BACKWARDS_FROM.
+const ALL_DIRS: [number, number][] = [
+  ...FORWARD_DIRS, [-1, 0], [0, -1], [-1, -1], [-1, 1],
+];
 
 interface Target {
   word: string;
@@ -32,14 +42,19 @@ interface Cell {
 }
 
 export function mountWordKhoj(host: HTMLElement, sdk: Sdk): () => void {
-  const hud = makeHud(host, ["Found", "Time"]);
+  const hud = makeHud(host, ["Level", "Found", "Time"]);
   const gc = createGameCanvas(host, 1.35); // grid on top, word list below
   const { ctx } = gc;
 
   const pad = 10;
-  const size = (gc.w - pad * 2) / N;
   const gridTop = pad;
-  const listTop = gridTop + N * size + 12;
+  // Grid geometry depends on the level's grid size, recomputed each round.
+  let level = sdk.getLevel("wordkhoj");
+  let N = gridFor(level);
+  let wordCount = wordsFor(level);
+  let dirs = FORWARD_DIRS;
+  let size = (gc.w - pad * 2) / N;
+  let listTop = gridTop + N * size + 12;
   const listFont = Math.round(Math.max(13, gc.w * 0.035));
 
   let letters: string[][] = [];
@@ -58,12 +73,13 @@ export function mountWordKhoj(host: HTMLElement, sdk: Sdk): () => void {
   // Returns false when no spot fits after many random attempts.
   function placeWord(word: string): boolean {
     for (let attempt = 0; attempt < 80; attempt++) {
-      const [dx, dy] = DIRS[Math.floor(Math.random() * DIRS.length)];
+      const [dx, dy] = dirs[Math.floor(Math.random() * dirs.length)];
       const len = word.length;
-      const maxX = dx !== 0 ? N - len : N - 1;
+      const minX = dx < 0 ? len - 1 : 0;
+      const maxX = dx > 0 ? N - len : N - 1;
       const minY = dy < 0 ? len - 1 : 0;
       const maxY = dy > 0 ? N - len : N - 1;
-      const x0 = Math.floor(Math.random() * (maxX + 1));
+      const x0 = minX + Math.floor(Math.random() * (maxX - minX + 1));
       const y0 = minY + Math.floor(Math.random() * (maxY - minY + 1));
       let ok = true;
       for (let i = 0; i < len; i++) {
@@ -81,10 +97,16 @@ export function mountWordKhoj(host: HTMLElement, sdk: Sdk): () => void {
   }
 
   function reset() {
-    // Pick 6 distinct words, then lay out a grid. If any word can't be
+    level = sdk.getLevel("wordkhoj");
+    N = gridFor(level);
+    wordCount = wordsFor(level);
+    dirs = level >= BACKWARDS_FROM ? ALL_DIRS : FORWARD_DIRS;
+    size = (gc.w - pad * 2) / N;
+    listTop = gridTop + N * size + 12;
+    // Pick distinct words, then lay out a grid. If any word can't be
     // placed (rare), throw the grid away and regenerate from scratch.
     for (;;) {
-      const words = [...POOL].sort(() => Math.random() - 0.5).slice(0, WORDS_PER_ROUND);
+      const words = [...POOL].sort(() => Math.random() - 0.5).slice(0, wordCount);
       letters = Array.from({ length: N }, () => Array(N).fill("") as string[]);
       if (words.every(placeWord)) {
         targets = words.map((w, i) => ({
@@ -106,7 +128,8 @@ export function mountWordKhoj(host: HTMLElement, sdk: Sdk): () => void {
     elapsed = 0;
     elapsedRaw = 0;
     over = false;
-    hud.set("Found", `0/${WORDS_PER_ROUND}`);
+    hud.set("Level", level);
+    hud.set("Found", `0/${wordCount}`);
     hud.set("Time", 0);
   }
 
@@ -163,8 +186,8 @@ export function mountWordKhoj(host: HTMLElement, sdk: Sdk): () => void {
       sdk.sfx("clear");
       sdk.haptic(30);
       const found = targets.filter((t) => t.found).length;
-      hud.set("Found", `${found}/${WORDS_PER_ROUND}`);
-      if (found === WORDS_PER_ROUND) win();
+      hud.set("Found", `${found}/${wordCount}`);
+      if (found === wordCount) win();
     }
     selStart = null;
     selEnd = null;
@@ -174,11 +197,17 @@ export function mountWordKhoj(host: HTMLElement, sdk: Sdk): () => void {
     over = true;
     score += Math.max(0, 200 - elapsed); // faster hunt = bigger bonus
     const isBest = sdk.submitScore("wordkhoj", score);
-    const coins = sdk.scaleReward(Math.max(2, Math.floor(score / 20)), 1);
-    sdk.addCoins(coins, "Word Khoj");
+    level += 1;
+    sdk.setLevel("wordkhoj", level);
+    hud.set("Level", level);
+    const coins = sdk.scaleReward(Math.max(2, Math.floor(score / 20)), level);
+    sdk.addCoins(coins, "Word Hunt");
+    const g = gridFor(level);
+    const extras = [`${g}×${g} grid`, `${wordsFor(level)} words`];
+    if (level >= BACKWARDS_FROM) extras.push("words hide backwards");
     showOverlay(gc.canvas, {
-      title: "Sab Mil Gaye! 🔎",
-      subtitle: `${elapsed}s`,
+      title: "⬆️ Level Up!",
+      subtitle: `All found in ${elapsed}s · Level ${level} — ${extras.join(", ")}`,
       coins,
       isBest,
       primaryLabel: "New Puzzle",
@@ -221,8 +250,8 @@ export function mountWordKhoj(host: HTMLElement, sdk: Sdk): () => void {
       }
     }
 
-    // ── Word list: 2 columns × 3 rows under the grid ──
-    const cols = 2;
+    // ── Word list under the grid: 2 columns, 3 once the list gets long ──
+    const cols = targets.length > 6 ? 3 : 2;
     const rows = Math.ceil(targets.length / cols);
     const colW = (gc.w - pad * 2) / cols;
     const rowH = (gc.h - listTop - pad) / rows;

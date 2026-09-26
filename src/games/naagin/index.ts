@@ -1,5 +1,5 @@
-// Naagin — classic snake. Swipe (or arrow keys) to steer, eat laddoos,
-// don't bite yourself. Speeds up as you grow.
+// Serpent — classic snake. Swipe (or arrow keys) to steer, eat glowing
+// orbs, don't bite yourself. Speeds up as you grow.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
 import { makeHud, showOverlay, showRevive } from "../../engine/ui";
 import { reviveCost, ECONOMY } from "../../sdk/economy";
@@ -121,7 +121,7 @@ export function mountNaagin(host: HTMLElement, sdk: Sdk): () => void {
       sdk.setLevel("naagin", level);
     }
     const coins = sdk.scaleReward(Math.max(1, Math.floor(score / ECONOMY.reward.scoreDivisor)), level);
-    sdk.addCoins(coins, "Naagin");
+    sdk.addCoins(coins, "Serpent");
     hud.set("Best", sdk.getBest("naagin"));
     hud.set("Level", level);
     sdk.haptic(60);
@@ -161,7 +161,7 @@ export function mountNaagin(host: HTMLElement, sdk: Sdk): () => void {
       for (let x = 0; x < N; x++)
         if ((x + y) % 2 === 0)
           roundRect(ctx, pad + x * cell, pad + y * cell, cell, cell, 3, "rgba(255,248,236,0.03)");
-    // food — a bright glowing laddoo that pulses so it's impossible to miss
+    // food — a bright glowing orb that pulses so it's impossible to miss
     foodPulse += dt * 5;
     const fx = pad + food[0] * cell + cell / 2;
     const fy = pad + food[1] * cell + cell / 2;
@@ -177,7 +177,7 @@ export function mountNaagin(host: HTMLElement, sdk: Sdk): () => void {
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#fff3c4";
     ctx.stroke();
-    // little highlight to read as a sweet
+    // little specular highlight so it reads as a shiny orb
     ctx.beginPath();
     ctx.arc(fx - fr * 0.3, fy - fr * 0.3, fr * 0.22, 0, 7);
     ctx.fillStyle = "rgba(255,255,255,0.85)";

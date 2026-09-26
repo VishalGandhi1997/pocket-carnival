@@ -1,12 +1,65 @@
-// Sanp Sidhi — Snakes & Ladders. Classic public-domain board race.
+// Snakes & Ladders — classic public-domain board race.
 // Roll dice, climb ladders, avoid snakes, first to square 100 wins.
 // Modes: vs Bot (auto-rolls) or Pass & Play (hand the phone over).
+// Bot mode has a persistent level ladder: each level the board gets meaner
+// (more/longer snakes, fewer/shorter ladders). Beat the bot to level up.
 import { createGameCanvas, palette, roundRect } from "../../engine/canvas";
-import { makeTurnBanner, showOverlay } from "../../engine/ui";
+import { makeHud, makeTurnBanner, showOverlay, type Hud } from "../../engine/ui";
 import type { Sdk } from "../../sdk/platform";
 
-const LADDERS: Record<number, number> = { 4: 25, 13: 46, 33: 49, 42: 63, 50: 69, 62: 81, 74: 92 };
-const SNAKES: Record<number, number> = { 27: 5, 40: 3, 43: 18, 54: 31, 66: 45, 76: 58, 89: 53, 95: 72, 98: 79 };
+type Jumps = Record<number, number>;
+
+// Level 1 (and Pass & Play) = the classic hand-tuned board.
+const CLASSIC_LADDERS: Jumps = { 4: 25, 13: 46, 33: 49, 42: 63, 50: 69, 62: 81, 74: 92 };
+const CLASSIC_SNAKES: Jumps = { 27: 5, 40: 3, 43: 18, 54: 31, 66: 45, 76: 58, 89: 53, 95: 72 };
+
+const snakeCount = (level: number) => Math.min(13, 8 + Math.floor((level - 1) / 2));
+const ladderCount = (level: number) => Math.max(4, 7 - Math.floor((level - 1) / 2));
+// Snakes bite deeper and ladders climb less as the level rises (capped).
+const minSnakeDrop = (level: number) => Math.min(25, 10 + level * 2);
+const maxSnakeDrop = (level: number) => Math.min(50, 30 + level * 3);
+const maxLadderClimb = (level: number) => Math.max(14, 32 - level * 2);
+
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rowOf = (n: number) => Math.floor((n - 1) / 10);
+
+/** Deterministic board for a level: same level → same board every time. */
+function boardForLevel(level: number): { ladders: Jumps; snakes: Jumps } {
+  if (level <= 1) return { ladders: { ...CLASSIC_LADDERS }, snakes: { ...CLASSIC_SNAKES } };
+  const rnd = mulberry32(level * 9973 + 17);
+  const randInt = (lo: number, hi: number) => lo + Math.floor(rnd() * (hi - lo + 1));
+  const used = new Set<number>([1, 100]); // nothing starts or ends on 1 or 100
+  const ladders: Jumps = {};
+  const snakes: Jumps = {};
+  const place = (target: Jumps, count: number, up: boolean) => {
+    let placed = 0;
+    for (let tries = 0; placed < count && tries < 2000; tries++) {
+      const start = up ? randInt(2, 90) : randInt(12, 99);
+      const len = up ? randInt(8, maxLadderClimb(level)) : randInt(minSnakeDrop(level), maxSnakeDrop(level));
+      const end = up ? start + len : start - len;
+      if (end < 2 || end > 99) continue;
+      if (rowOf(start) === rowOf(end)) continue; // always cross at least one row
+      if (used.has(start) || used.has(end)) continue; // no shared starts/ends
+      used.add(start);
+      used.add(end);
+      target[start] = end;
+      placed++;
+    }
+  };
+  place(snakes, snakeCount(level), false);
+  place(ladders, ladderCount(level), true);
+  return { ladders, snakes };
+}
 
 function cellPos(n: number) {
   const idx = n - 1;
@@ -18,6 +71,10 @@ function cellPos(n: number) {
 
 export function mountSanpSidhi(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot" | "pnp" }): () => void {
   const mode = opts?.mode ?? "bot";
+  // Level ladder only applies vs the bot; pass & play stays a friendly match.
+  const hud: Hud | null = mode === "bot" ? makeHud(host, ["Level", "Wins"]) : null;
+  let level = mode === "bot" ? sdk.getLevel("sanpsidhi") : 1;
+  let { ladders: LADDERS, snakes: SNAKES } = boardForLevel(level);
   const banner = makeTurnBanner(host);
   const gc = createGameCanvas(host, 1.0);
   const { ctx } = gc;
@@ -36,7 +93,7 @@ export function mountSanpSidhi(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot
     if (over) return;
     const again = rolledSix ? " · Rolled a 6, go again!" : "";
     if (turn === 0) banner.set(`🎲 Your Turn — Roll!${again}`, "you");
-    else banner.set((mode === "bot" ? "🤖 Bot is thinking…" : "🎲 Player 2's Turn — Roll!") + again, "opp");
+    else banner.set((mode === "bot" ? `🤖 Bot (Lv ${level}) is thinking…` : "🎲 Player 2's Turn — Roll!") + again, "opp");
   }
 
   function roll() {
@@ -85,13 +142,23 @@ export function mountSanpSidhi(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot
   function win(idx: number) {
     over = true;
     const youWon = idx === 0;
-    const coins = youWon ? 30 : 5;
+    const leveledUp = mode === "bot" && youWon;
+    if (leveledUp) {
+      level += 1;
+      sdk.setLevel("sanpsidhi", level);
+    }
+    const coins = sdk.scaleReward(youWon ? 30 : 5, level);
     if (youWon) sdk.submitScore("sanpsidhi", sdk.getBest("sanpsidhi") + 1);
-    sdk.addCoins(coins, "Sanp Sidhi");
+    sdk.addCoins(coins, "Snakes & Ladders");
+    hud?.set("Level", level);
+    hud?.set("Wins", sdk.getBest("sanpsidhi"));
     banner.set(youWon ? "🏆 You Won!" : `${players[idx].name} Won`, youWon ? "you" : "opp");
+    let subtitle = "First to square 100";
+    if (leveledUp) subtitle = `Level ${level} — ${snakeCount(level)} snakes, ${ladderCount(level)} ladders, deeper bites`;
+    else if (mode === "bot") subtitle = `Bot reached 100 first · win to reach Level ${level + 1}`;
     showOverlay(gc.canvas, {
-      title: youWon ? "You Won! 🏆" : `${players[idx].name} Wins`,
-      subtitle: "First to square 100",
+      title: leveledUp ? "⬆️ Level Up!" : youWon ? "You Won! 🏆" : `${players[idx].name} Wins`,
+      subtitle,
       coins,
       mood: youWon ? "win" : "lose",
       primaryLabel: "Play Again",
@@ -100,6 +167,12 @@ export function mountSanpSidhi(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot
   }
 
   function reset() {
+    if (mode === "bot") {
+      level = sdk.getLevel("sanpsidhi");
+      ({ ladders: LADDERS, snakes: SNAKES } = boardForLevel(level));
+      hud?.set("Level", level);
+      hud?.set("Wins", sdk.getBest("sanpsidhi"));
+    }
     players[0].pos = 0;
     players[1].pos = 0;
     turn = 0;
@@ -192,7 +265,7 @@ export function mountSanpSidhi(host: HTMLElement, sdk: Sdk, opts?: { mode?: "bot
     });
   });
 
-  refreshBanner();
+  reset();
 
   function lerp(a: number, b: number, t: number) {
     return a + (b - a) * t;
