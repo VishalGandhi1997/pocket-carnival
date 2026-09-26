@@ -61,7 +61,7 @@ domain is **DONE** (marked ✅). What remains is the OWNER ACTIONS list at the e
 - ✅ Stale text fixed everywhere (game count → 40 in app title, manifest,
   welcome screen, footer); manifest phantom PNG icons removed earlier.
 - ✅ Placeholder/dead-link sweep: no `khelmela.app` emails, no old bundle id,
-  no StockGro identifiers anywhere in the repo or git history metadata
+  no employer or work identifiers anywhere in the repo or git history metadata
   (commits authored via GitHub noreply).
 - ✅ Deployed web build verified live after changes (home, About links, shop
   honesty message).
